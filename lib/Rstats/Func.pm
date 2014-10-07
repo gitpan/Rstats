@@ -389,7 +389,7 @@ sub factor {
           last;
         }
       }
-      push $new_a_levels_elements, $x_levels_element unless $match;
+      push @$new_a_levels_elements, $x_levels_element unless $match;
     }
     $x_levels = c($new_a_levels_elements);
   }
@@ -836,12 +836,12 @@ sub grep {
       my $x = $x_e->{cv};
       if ($ignore_case) {
         if ($x =~ /$pattern/i) {
-          push $x2_elements, Rstats::ElementFunc::double($i + 1);
+          push @$x2_elements, Rstats::ElementFunc::double($i + 1);
         }
       }
       else {
         if ($x =~ /$pattern/) {
-          push $x2_elements, Rstats::ElementFunc::double($i + 1);
+          push @$x2_elements, Rstats::ElementFunc::double($i + 1);
         }
       }
     }
@@ -897,13 +897,13 @@ sub charmatch {
       }
     }
     if ($match_count == 0) {
-      push $x2_elements, Rstats::ElementFunc::NA();
+      push @$x2_elements, Rstats::ElementFunc::NA();
     }
     elsif ($match_count == 1) {
-      push $x2_elements, Rstats::ElementFunc::double($match_pos + 1);
+      push @$x2_elements, Rstats::ElementFunc::double($match_pos + 1);
     }
     elsif ($match_count > 1) {
-      push $x2_elements, Rstats::ElementFunc::double(0);
+      push @$x2_elements, Rstats::ElementFunc::double(0);
     }
   }
   
@@ -1059,11 +1059,11 @@ sub nchar {
     my $x2_elements = [];
     for my $x1_element (@{$x1->elements}) {
       if ($x1_element->is_na) {
-        push $x2_elements, $x1_element;
+        push @$x2_elements, $x1_element;
       }
       else {
         my $x2_element = Rstats::ElementFunc::double(CORE::length $x1_element->value);
-        push $x2_elements, $x2_element;
+        push @$x2_elements, $x2_element;
       }
     }
     my $x2 = $x1->clone(elements => $x2_elements);
@@ -1082,11 +1082,11 @@ sub tolower {
     my $x2_elements = [];
     for my $x1_element (@{$x1->elements}) {
       if ($x1_element->is_na) {
-        push $x2_elements, $x1_element;
+        push @$x2_elements, $x1_element;
       }
       else {
         my $x2_element = Rstats::ElementFunc::character(lc $x1_element->value);
-        push $x2_elements, $x2_element;
+        push @$x2_elements, $x2_element;
       }
     }
     my $x2 = $x1->clone(elements => $x2_elements);
@@ -1105,11 +1105,11 @@ sub toupper {
     my $x2_elements = [];
     for my $x1_element (@{$x1->elements}) {
       if ($x1_element->is_na) {
-        push $x2_elements, $x1_element;
+        push @$x2_elements, $x1_element;
       }
       else {
         my $x2_element = Rstats::ElementFunc::character(uc $x1_element->value);
-        push $x2_elements, $x2_element;
+        push @$x2_elements, $x2_element;
       }
     }
     my $x2 = $x1->clone(elements => $x2_elements);
@@ -1522,10 +1522,11 @@ sub args {
   for (my $i = 0; $i < @$names; $i++) {
     my $name = $names->[$i];
     my $arg;
+    $DB::single = 1;
     if (exists $opt->{$name}) {
       $arg = to_c(delete $opt->{$name});
     }
-    elsif (exists $_[$i]) {
+    elsif ($i < @_) {
       $arg = to_c($_[$i]);
     }
     push @args, $arg;
@@ -2298,7 +2299,7 @@ sub quantile {
   my $quantile_elements = [];
   
   # Min
-  push $quantile_elements , $x3->get(1);
+  push @$quantile_elements , $x3->get(1);
   
   # 1st quoter
   if ($x3_length % 4 == 0) {
@@ -2340,7 +2341,7 @@ sub quantile {
   }
   
   # Max
-  push $quantile_elements , $x3->get($x3_length);
+  push @$quantile_elements , $x3->get($x3_length);
   
   my $x4 = Rstats::Func::c($quantile_elements);
   $x4->names(Rstats::Func::c(qw/0%  25%  50%  75% 100%/));
@@ -2381,7 +2382,6 @@ sub which {
 }
 
 sub matrix {
-  
   my ($x1, $x_nrow, $x_ncol, $x_byrow, $x_dirnames)
     = args(['x1', 'nrow', 'ncol', 'byrow', 'dirnames'], @_);
 
@@ -2457,7 +2457,7 @@ sub inner_product {
         my $x1_part = $x1->get($row);
         my $x2_part = $x2->get(NULL, $col);
         my $x3_part = sum($x1 * $x2);
-        push $x3_elements, $x3_part;
+        push @$x3_elements, $x3_part;
       }
     }
     
@@ -2651,7 +2651,7 @@ sub c {
     }
   }
   else {
-    croak "Invalid first argument";
+    return NA();
   }
   
   # Check elements
