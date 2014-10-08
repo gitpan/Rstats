@@ -3,25 +3,25 @@ abstract: 'R language build on Perl'
 author:
   - 'Yuki Kimoto <kimoto.yuki@gmail.com>'
 build_requires:
-  ExtUtils::MakeMaker: 0
+  ExtUtils::MakeMaker: '0'
 configure_requires:
-  ExtUtils::MakeMaker: 0
+  ExtUtils::MakeMaker: '0'
 dynamic_config: 1
-generated_by: 'ExtUtils::MakeMaker version 6.6302, CPAN::Meta::Converter version 2.131560'
+generated_by: 'ExtUtils::MakeMaker version 6.98, CPAN::Meta::Converter version 2.142690'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
-  version: 1.4
+  version: '1.4'
 name: Rstats
 no_index:
   directory:
     - t
     - inc
 requires:
-  Imager: 1.000
-  Imager::Graph: 0.11
-  Math::Round: 0.06
-  Object::Simple: 3.10
-  Test::More: 0
-  Text::UnicodeTable::Simple: 0.09
-version: 0.0101
+  Imager: '1.000'
+  Imager::Graph: '0.11'
+  Math::Round: '0.06'
+  Object::Simple: '3.10'
+  Test::More: '0'
+  Text::UnicodeTable::Simple: '0.09'
+version: '0.0102'
