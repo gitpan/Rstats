@@ -948,7 +948,7 @@ use Math::Complex ();
   {
     my $x1 = array(c(pi/2, pi/3));
     my $x2 = r->cos($x1);
-    like(sprintf("%.3e", $x2->values->[0]), qr/^6\.123e-0?17$/);
+    cmp_ok(abs($x2->values->[0]), '<', 1e-15);
     is(sprintf("%.5f", $x2->values->[1]), '0.50000');
     is_deeply(r->dim($x2)->values, [2]);
     ok(r->is_double($x2));

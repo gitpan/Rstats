@@ -24,4 +24,4 @@ requires:
   Object::Simple: '3.10'
   Test::More: '0'
   Text::UnicodeTable::Simple: '0.09'
-version: '0.0102'
+version: '0.0103'
