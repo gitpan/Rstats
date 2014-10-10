@@ -2,7 +2,7 @@ package Rstats;
 use strict;
 use warnings;
 
-our $VERSION = '0.0103';
+our $VERSION = '0.0104';
 
 use Rstats::Class;
 
@@ -29,6 +29,9 @@ sub import {
   
   warnings->unimport('ambiguous');
 }
+
+require XSLoader;
+XSLoader::load('Rstats', $VERSION);
 
 1;
 
