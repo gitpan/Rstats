@@ -2825,4 +2825,8 @@ sub upgrade_type {
   return @xs;
 }
 
+=head1 NAME
+
+Rstats::Func - Functions
+
 1;

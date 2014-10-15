@@ -1,7 +1,13 @@
-#include <complex>
-namespace Rstats {
+/* C library */
+#include <math.h>
 
-  // Rstats::Elementtype
+/* C++ library */
+#include <vector>
+#include <iostream>
+#include <complex>
+
+namespace Rstats {
+  // Rstats::ElementType
   namespace ElementType {
     enum Enum {
       NA = 0,
@@ -13,7 +19,7 @@ namespace Rstats {
       UNKNOWN = 32
     };
   }
-  
+
   // Rstats::Element
   typedef struct {
     union {
@@ -65,7 +71,7 @@ namespace Rstats {
   }
   
   // Rstats::ElementFunc
-  namespace ElementsFunc {
+  namespace ElementFunc {
     void process(void (*func)(Element*, const Element*), Rstats::Element* elements1, const Rstats::Element* elements2, size_t size) {
       for (int i = 0; i < size; i++) {
         (*func)(elements1 + i, elements2 + i);
@@ -75,27 +81,14 @@ namespace Rstats {
     void add(Rstats::Element* elements1, const Rstats::Element* elements2, size_t size) {
       process(Rstats::ElementFunc::add, elements1, elements2, size);
     }
-  }
-  
-  // Rstats::Util
-  namespace Util {
-    unsigned int index_to_pos (int* index, int index_len, int* dim_values, int dim_values_len) {
+
+    Rstats::Element* create_double(double dv)
+    {
+      Rstats::Element* element = new Rstats::Element;
+      element->dv = dv;
+      element->type = Rstats::ElementType::DOUBLE;
       
-      int pos = 0;
-      for (int i = 0; i < dim_values_len; i++) {
-        if (i > 0) {
-          int tmp = 1;
-          for (int k = 0; k < i; k++) {
-            tmp *= dim_values[k];
-          }
-          pos += tmp * (index[i] - 1);
-        }
-        else {
-          pos += index[i];
-        }
-      }
-      
-      return pos - 1;
+      return element;
     }
   }
 }
