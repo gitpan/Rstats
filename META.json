@@ -34,11 +34,10 @@
          "requires" : {
             "Math::Round" : "0.06",
             "Object::Simple" : "3.10",
-            "Test::More" : "0",
             "Text::UnicodeTable::Simple" : "0.09"
          }
       }
    },
    "release_status" : "stable",
-   "version" : "0.0107"
+   "version" : "0.0108"
 }

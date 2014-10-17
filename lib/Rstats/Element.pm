@@ -46,13 +46,13 @@ sub _fix_position {
   return ($e1, $e2);
 }
 
-has 'type';
-has 'iv';
-has 'dv';
-has 'cv';
-has 're';
-has 'im';
-has 'flag';
+# has 'type';
+# has 'iv';
+# has 'dv';
+# has 'cv';
+# has 're';
+# has 'im';
+# has 'flag';
 
 sub as_character {
   my $self = shift;
@@ -69,7 +69,7 @@ sub as_complex {
     return $self;
   }
   elsif ($self->is_character) {
-    my $z = Rstats::Util::looks_like_complex($self->{cv});
+    my $z = Rstats::Util::looks_like_complex($self->cv);
     if (defined $z) {
       return Rstats::ElementFunc::complex($z->{re}, $z->{im});
     }
@@ -90,10 +90,10 @@ sub as_complex {
     }
   }
   elsif ($self->is_integer) {
-    return Rstats::ElementFunc::complex($self->{iv}, 0);
+    return Rstats::ElementFunc::complex($self->iv, 0);
   }
   elsif ($self->is_logical) {
-    return Rstats::ElementFunc::complex($self->{iv} ? 1 : 0, 0);
+    return Rstats::ElementFunc::complex($self->iv ? 1 : 0, 0);
   }
   else {
     croak "unexpected type";
@@ -109,7 +109,7 @@ sub as_double {
     return $self;
   }
   elsif ($self->is_character) {
-    if (my $num = Rstats::Util::looks_like_number($self->{cv})) {
+    if (my $num = Rstats::Util::looks_like_number($self->cv)) {
       return Rstats::ElementFunc::double($num + 0);
     }
     else {
@@ -125,10 +125,10 @@ sub as_double {
     return $self;
   }
   elsif ($self->is_integer) {
-    return Rstats::ElementFunc::double($self->{iv});
+    return Rstats::ElementFunc::double($self->iv);
   }
   elsif ($self->is_logical) {
-    return Rstats::ElementFunc::double($self->{iv} ? 1 : 0);
+    return Rstats::ElementFunc::double($self->iv ? 1 : 0);
   }
   else {
     croak "unexpected type";
@@ -142,7 +142,7 @@ sub as_integer {
     return $self;
   }
   elsif ($self->is_character) {
-    if (my $num = Rstats::Util::looks_like_number($self->{cv})) {
+    if (my $num = Rstats::Util::looks_like_number($self->cv)) {
       return Rstats::ElementFunc::integer(int $num);
     }
     else {
@@ -159,14 +159,14 @@ sub as_integer {
       return Rstats::ElementFunc::NA();
     }
     else {
-      return Rstats::ElementFunc::integer($self->{dv});
+      return Rstats::ElementFunc::integer($self->dv);
     }
   }
   elsif ($self->is_integer) {
     return $self; 
   }
   elsif ($self->is_logical) {
-    return Rstats::ElementFunc::integer($self->{iv} ? 1 : 0);
+    return Rstats::ElementFunc::integer($self->iv ? 1 : 0);
   }
   else {
     croak "unexpected type";
@@ -208,14 +208,14 @@ sub as_logical {
       return Rstats::ElementFunc::TRUE();
     }
     else {
-      return $self->{dv} == 0 ? Rstats::ElementFunc::FALSE() : Rstats::ElementFunc::TRUE();
+      return $self->dv == 0 ? Rstats::ElementFunc::FALSE() : Rstats::ElementFunc::TRUE();
     }
   }
   elsif ($self->is_integer) {
-    return $self->{iv} == 0 ? Rstats::ElementFunc::FALSE() : Rstats::ElementFunc::TRUE();
+    return $self->iv == 0 ? Rstats::ElementFunc::FALSE() : Rstats::ElementFunc::TRUE();
   }
   elsif ($self->is_logical) {
-    return $self->{iv} == 0 ? Rstats::ElementFunc::FALSE() : Rstats::ElementFunc::TRUE();
+    return $self->iv == 0 ? Rstats::ElementFunc::FALSE() : Rstats::ElementFunc::TRUE();
   }
   else {
     croak "unexpected type";
@@ -255,38 +255,36 @@ sub to_string {
     return 'NA';
   }
   elsif ($self->is_character) {
-    return $self->{cv} . "";
+    return $self->cv . "";
   }
   elsif ($self->is_complex) {
-    my $re = $self->re->to_string;
-    my $im = $self->im->to_string;
+    my $re = $self->re;
+    my $im = $self->im;
     
     my $str = "$re";
     $str .= '+' if $im >= 0;
     $str .= $im . 'i';
   }
   elsif ($self->is_double) {
-    
-    my $flag = $self->flag;
-    
-    if (defined $self->{dv}) {
-      return $self->{dv} . "";
-    }
-    elsif ($flag eq 'nan') {
-      return 'NaN';
-    }
-    elsif ($flag eq 'inf') {
+  
+    if ($self->is_positive_infinite) {
       return 'Inf';
     }
-    elsif ($flag eq '-inf') {
+    elsif ($self->is_negative_infinite) {
       return '-Inf';
+    }
+    elsif ($self->is_nan) {
+      return 'NaN';
+    }
+    else {
+      $self->dv . "";
     }
   }
   elsif ($self->is_integer) {
-    return $self->{iv} . "";
+    return $self->iv . "";
   }
   elsif ($self->is_logical) {
-    return $self->{iv} ? 'TRUE' : 'FALSE'
+    return $self->iv ? 'TRUE' : 'FALSE'
   }
   else {
     croak "Invalid type";
@@ -303,22 +301,18 @@ sub bool {
     croak 'Error in -a : invalid argument to unary operator ';
   }
   elsif ($self->is_double) {
-
-    if (defined $self->{dv}) {
-      return $self->{dv};
+    if ($self->is_infinite) {
+      return 1;
+    }
+    elsif ($self->is_nan) {
+      croak 'argument is not interpretable as logical';
     }
     else {
-      if ($self->is_infinite) {
-        1;
-      }
-      # NaN
-      else {
-        croak 'argument is not interpretable as logical'
-      }
+      return $self->dv;
     }
   }
   elsif ($self->is_integer || $self->is_logical) {
-    return $self->{iv};
+    return $self->iv;
   }
   else {
     croak "Invalid type";
@@ -342,11 +336,11 @@ sub value {
       return 'NaN';
     }
     else {
-      return $self->{dv};
+      return $self->dv;
     }
   }
   elsif ($self->is_logical) {
-    if ($self->{iv}) {
+    if ($self->iv) {
       return 1;
     }
     else {
@@ -360,10 +354,10 @@ sub value {
     };
   }
   elsif ($self->is_character) {
-    return $self->{cv};
+    return $self->cv;
   }
   elsif ($self->is_integer) {
-    return $self->{iv};
+    return $self->iv;
   }
   else {
     croak "Invalid type";
@@ -383,34 +377,22 @@ sub is_integer { shift->type eq 'integer' }
 sub is_logical { shift->type eq 'logical' }
 sub is_na { shift->type eq 'na' }
 
-sub is_nan {
-  my $self = shift;
-  
-  return $self->type eq 'double' && $self->flag eq 'nan';
-}
-
-sub is_infinite {
-  my $self = shift;
-  return $self->is_positive_infinite || $self->is_negative_infinite;
-}
-
 sub is_positive_infinite {
   my $self = shift;
   
-  return $self->type eq 'double' && $self->flag eq 'inf';
+  return $self->is_infinite && $self->dv > 0;
 }
 
 sub is_negative_infinite {
   my $self = shift;
   
-  return $self->type eq 'double' && $self->flag eq '-inf';
+  return $self->is_infinite && $self->dv < 0;
 }
 
-sub is_finite {
-  my $self = shift;
-  
-  return $self->is_integer || ($self->is_double && defined $self->{dv});
-}
+# XS
+# is_nan
+# is_infinite
+# is_finite
 
 1;
 

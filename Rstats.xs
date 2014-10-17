@@ -1,11 +1,22 @@
-/* Rstats headers */
-#include "Rstats.h"
+/* C++ library */
+#include <vector>
+#include <iostream>
+#include <complex>
+#include <cmath>
 
 /* Perl headers */
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
 #include "ppport.h"
+
+/* Perl API */
+#include "RstatsPerlAPI.h"
+
+Rstats::PerlAPI* p = new Rstats::PerlAPI;
+
+/* Rstats headers */
+#include "Rstats.h"
 
 /* avoid symbol collisions*/
 #undef init_tm
@@ -15,13 +26,9 @@
 #undef ENTER
 #endif
 
-#include "RstatsPerlAPI.h"
-
-Rstats::PerlAPI* p = new Rstats::PerlAPI;
-
 using namespace std;
 
-MODULE = Rstats::ElementXS PACKAGE = Rstats::ElementXS
+MODULE = Rstats::Element PACKAGE = Rstats::Element
 
 void
 is_finite(...)
@@ -29,13 +36,9 @@ is_finite(...)
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
   
-  SV* ret_sv;
-  if (self->type == Rstats::ElementType::INTEGER || (self->type == Rstats::ElementType::DOUBLE && isfinite(self->dv))) {
-    ret_sv = p->new_sv((I32)1);
-  }
-  else {
-    ret_sv = p->new_sv((I32)0);
-  }
+  Rstats::Element* ret = Rstats::ElementFunc::is_finite(self);
+
+  SV* ret_sv = p->to_perl_obj(ret, "Rstats::Element");
   
   return_sv(ret_sv);
 }
@@ -46,9 +49,11 @@ is_infinite(...)
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
   
-  int ret = Rstats::ElementFunc::is_infinite(self);
+  Rstats::Element* ret = Rstats::ElementFunc::is_infinite(self);
   
-  return_sv(p->new_sv((I32)ret));
+  SV* ret_sv = p->to_perl_obj(ret, "Rstats::Element");
+  
+  return_sv(ret_sv);
 }
 
 void
@@ -56,14 +61,10 @@ is_nan(...)
   PPCODE:
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
-  
-  SV* ret_sv;
-  if (self->type == Rstats::ElementType::DOUBLE && isnan(self->dv)) {
-    ret_sv = p->new_sv((I32)1);
-  }
-  else {
-    ret_sv = p->new_sv((I32)0);
-  }
+
+  Rstats::Element* ret = Rstats::ElementFunc::is_nan(self);
+
+  SV* ret_sv = p->to_perl_obj(ret, "Rstats::Element");
   
   return_sv(ret_sv);
 }
@@ -130,9 +131,15 @@ cv(...)
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
   
-  SV* chv_sv = p->new_sv(self->chv);
+  SV* str_sv;
+  if (self->type == Rstats::ElementType::CHARACTER) {
+    str_sv = p->new_sv((SV*)self->pv);
+  }
+  else {
+    str_sv = p->new_sv("");
+  }
   
-  return_sv(chv_sv);
+  return_sv(str_sv);
 }
 
 void
@@ -143,23 +150,10 @@ re(...)
   
   double re = ((complex<double>*)self->pv)->real();
   
-  SV* re_sv;
-  if (isinf(re)) {
-    if (re > 0) {
-      re_sv = p->new_sv("Inf");
-    }
-    else {
-      re_sv = p->new_sv("-Inf");
-    }
-  }
-  else if(isnan(re)) {
-    re_sv = p->new_sv("NaN");
-  }
-  else {
-    re_sv = p->new_sv(re);
-  }
+  Rstats::Element* re_element = Rstats::ElementFunc::new_double(re);
+  SV* re_element_sv = p->to_perl_obj(re_element, "Rstats::Element");
 
-  return_sv(re_sv);
+  return_sv(re_element_sv);
 }
 
 void
@@ -170,23 +164,10 @@ im(...)
   
   double im = ((complex<double>*)self->pv)->imag();
   
-  SV* im_sv;
-  if (isinf(im)) {
-    if (im > 0) {
-      im_sv = p->new_sv("Inf");
-    }
-    else {
-      im_sv = p->new_sv("-Inf");
-    }
-  }
-  else if(isnan(im)) {
-    im_sv = p->new_sv("NaN");
-  }
-  else {
-    im_sv = p->new_sv(im);
-  }
+  Rstats::Element* im_element = Rstats::ElementFunc::new_double(im);
+  SV* im_element_sv = p->to_perl_obj(im_element, "Rstats::Element");
 
-  return_sv(im_sv);
+  return_sv(im_element_sv);
 }
 
 void
@@ -228,7 +209,7 @@ DESTROY(...)
     delete (complex<double>*)self->pv;
   }
   else if (self->type == Rstats::ElementType::CHARACTER) {
-    delete self->chv;
+    SvREFCNT_dec((SV*)self->pv);
   }
   delete self;
 }
@@ -236,53 +217,74 @@ DESTROY(...)
 MODULE = Rstats::ElementFunc PACKAGE = Rstats::ElementFunc
 
 void
-negativeInf_xs(...)
+complex_double (...)
   PPCODE:
 {
-  Rstats::Element* element = Rstats::ElementFunc::create_double(-(INFINITY));
-  SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
+  Rstats::Element* re = p->to_c_obj<Rstats::Element*>(ST(0));
+  Rstats::Element* im = p->to_c_obj<Rstats::Element*>(ST(1));
+  
+  Rstats::Element* z = Rstats::ElementFunc::new_complex(re->dv, im->dv);
+  
+  SV* z_sv = p->to_perl_obj(z, "Rstats::Element");
+  
+  return_sv(z_sv);
+}
+
+void
+new_negativeInf(...)
+  PPCODE:
+{
+  Rstats::Element* element = Rstats::ElementFunc::new_negativeInf();
+  SV* element_obj = p->to_perl_obj(element, "Rstats::Element");
   
   return_sv(element_obj);
 }
 
 void
-Inf_xs(...)
+new_Inf(...)
   PPCODE:
 {
-  Rstats::Element* element = Rstats::ElementFunc::create_double(INFINITY);
-  SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
+  Rstats::Element* element = Rstats::ElementFunc::new_Inf();
+  SV* element_obj = p->to_perl_obj(element, "Rstats::Element");
   
   return_sv(element_obj);
 }
 
 void
-NaN_xs(...)
+new_NaN(...)
   PPCODE:
 {
-  Rstats::Element* element = Rstats::ElementFunc::create_double(NAN);
-  SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
+  Rstats::Element* element = Rstats::ElementFunc::new_NaN();
+  SV* element_obj = p->to_perl_obj(element, "Rstats::Element");
   
   return_sv(element_obj);
 }
 
 void
-character_xs(...)
+new_NA(...)
   PPCODE:
 {
-  SV* value_sv = ST(0);
-  char* chv = p->pv(value_sv);
-  
-  Rstats::Element* element = new Rstats::Element;
-  element->chv = chv;
-  element->type = Rstats::ElementType::CHARACTER;
-  
-  SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
+  Rstats::Element* element = Rstats::ElementFunc::new_NA();
+  SV* element_obj = p->to_perl_obj(element, "Rstats::Element");
   
   return_sv(element_obj);
 }
 
 void
-complex_xs(...)
+new_character(...)
+  PPCODE:
+{
+  SV* str_sv = ST(0);
+  
+  Rstats::Element* element = Rstats::ElementFunc::new_character(str_sv);
+  
+  SV* element_obj = p->to_perl_obj(element, "Rstats::Element");
+  
+  return_sv(element_obj);
+}
+
+void
+new_complex(...)
   PPCODE:
 {
   SV* re_sv = ST(0);
@@ -291,59 +293,79 @@ complex_xs(...)
   double re = p->nv(re_sv);
   double im = p->nv(im_sv);
   
-  complex<double>* z = new complex<double>(re, im);
+  Rstats::Element* element = Rstats::ElementFunc::new_complex(re, im);
   
-  Rstats::Element* element = new Rstats::Element;
-  element->pv = (void*)z;
-  element->type = Rstats::ElementType::COMPLEX;
-  
-  SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
+  SV* element_obj = p->to_perl_obj(element, "Rstats::Element");
   
   return_sv(element_obj);
 }
 
 void
-logical_xs(...)
+new_logical(...)
   PPCODE:
 {
   SV* value_sv = ST(0);
   I32 iv = p->iv(value_sv);
   
-  Rstats::Element* element = new Rstats::Element;
-  element->iv = iv;
-  element->type = Rstats::ElementType::LOGICAL;
+  Rstats::Element* element = Rstats::ElementFunc::new_logical((bool)iv);
   
-  SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
+  SV* element_obj = p->to_perl_obj(element, "Rstats::Element");
   
   return_sv(element_obj);
 }
 
 void
-integer_xs(...)
+new_true(...)
   PPCODE:
 {
   SV* value_sv = ST(0);
   I32 iv = p->iv(value_sv);
   
-  Rstats::Element* element = new Rstats::Element;
-  element->iv = iv;
-  element->type = Rstats::ElementType::INTEGER;
+  Rstats::Element* element = Rstats::ElementFunc::new_true();
   
-  SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
+  SV* element_obj = p->to_perl_obj(element, "Rstats::Element");
   
   return_sv(element_obj);
 }
 
 void
-double_xs(...)
+new_false(...)
+  PPCODE:
+{
+  SV* value_sv = ST(0);
+  I32 iv = p->iv(value_sv);
+  
+  Rstats::Element* element = Rstats::ElementFunc::new_false();
+  
+  SV* element_obj = p->to_perl_obj(element, "Rstats::Element");
+  
+  return_sv(element_obj);
+}
+
+void
+new_double(...)
   PPCODE:
 {
   SV* value_sv = ST(0);
   double dv = p->nv(value_sv);
   
-  Rstats::Element* element = Rstats::ElementFunc::create_double(dv);
+  Rstats::Element* element = Rstats::ElementFunc::new_double(dv);
   
-  SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
+  SV* element_obj = p->to_perl_obj(element, "Rstats::Element");
+  
+  return_sv(element_obj);
+}
+
+void
+new_integer(...)
+  PPCODE:
+{
+  SV* value_sv = ST(0);
+  int iv = p->iv(value_sv);
+  
+  Rstats::Element* element = Rstats::ElementFunc::new_integer(iv);
+  
+  SV* element_obj = p->to_perl_obj(element, "Rstats::Element");
   
   return_sv(element_obj);
 }

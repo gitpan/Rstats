@@ -169,11 +169,7 @@ sub is_finite {
 
   my $x1 = Rstats::Func::to_c($_a1);
   
-  my @a2_elements = map {
-    !ref $_ || ref $_ eq 'Rstats::Type::Complex' || ref $_ eq 'Rstats::Logical' 
-      ? Rstats::ElementFunc::TRUE()
-      : Rstats::ElementFunc::FALSE()
-  } @{$x1->elements};
+  my @a2_elements = map { $_->is_finite } @{$x1->elements};
   my $x2 = Rstats::Func::array(\@a2_elements);
   $x2->mode('logical');
   
@@ -185,9 +181,7 @@ sub is_infinite {
   
   my $x1 = Rstats::Func::to_c($_a1);
   
-  my @a2_elements = map {
-    ref $_ eq 'Rstats::Inf' ? Rstats::ElementFunc::TRUE() : Rstats::ElementFunc::FALSE()
-  } @{$x1->elements};
+  my @a2_elements = map { $_->is_infinite } @{$x1->elements};
   my $x2 = Rstats::Func::c(\@a2_elements);
   $x2->mode('logical');
   
@@ -199,9 +193,7 @@ sub is_nan {
   
   my $x1 = Rstats::Func::to_c($_a1);
   
-  my @a2_elements = map {
-    ref $_ eq  'Rstats::NaN' ? Rstats::ElementFunc::TRUE() : Rstats::ElementFunc::FALSE()
-  } @{$x1->elements};
+  my @a2_elements = map { $_->is_nan } @{$x1->elements};
   my $x2 = Rstats::Func::array(\@a2_elements);
   $x2->mode('logical');
   
@@ -334,7 +326,7 @@ sub bool {
   elsif ($length > 1) {
     carp 'In if (a) { : the condition has length > 1 and only the first element will be used';
   }
-
+  
   my $element = $self->element;
   
   return !!$element;
@@ -342,7 +334,7 @@ sub bool {
 
 sub element {
   my $self = shift;
-  
+
   my $dim_values = $self->dim_as_array->values;
   
   if (@_) {
