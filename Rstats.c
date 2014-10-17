@@ -28,7 +28,9 @@
 
 Rstats::PerlAPI* p = new Rstats::PerlAPI;
 
-#line 32 "Rstats.c"
+using namespace std;
+
+#line 34 "Rstats.c"
 #ifndef PERL_UNUSED_VAR
 #  define PERL_UNUSED_VAR(var) if (0) var = var
 #endif
@@ -170,7 +172,7 @@ S_croak_xs_usage(pTHX_ const CV *const cv, const char *const params)
 #define newXSproto_portable(name, c_impl, file, proto) (PL_Sv=(SV*)newXS(name, c_impl, file), sv_setpv(PL_Sv, proto), (CV*)PL_Sv)
 #endif /* !defined(newXS_flags) */
 
-#line 174 "Rstats.c"
+#line 176 "Rstats.c"
 
 XS_EUPXS(XS_Rstats__ElementXS_is_finite); /* prototype to pass -Wmissing-prototypes */
 XS_EUPXS(XS_Rstats__ElementXS_is_finite)
@@ -180,22 +182,21 @@ XS_EUPXS(XS_Rstats__ElementXS_is_finite)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 27 "Rstats.xs"
+#line 29 "Rstats.xs"
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
 
   SV* ret_sv;
-  if (self->type == Rstats::ElementType::INTEGER || (self->type == Rstats::ElementType::DOUBLE && std::isfinite(self->dv))) {
+  if (self->type == Rstats::ElementType::INTEGER || (self->type == Rstats::ElementType::DOUBLE && isfinite(self->dv))) {
     ret_sv = p->new_sv((I32)1);
   }
   else {
     ret_sv = p->new_sv((I32)0);
   }
 
-  XPUSHs(ret_sv);
-  XSRETURN(1);
+  return_sv(ret_sv);
 }
-#line 199 "Rstats.c"
+#line 200 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -210,22 +211,15 @@ XS_EUPXS(XS_Rstats__ElementXS_is_infinite)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 45 "Rstats.xs"
+#line 46 "Rstats.xs"
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
 
-  SV* ret_sv;
-  if (self->type == Rstats::ElementType::DOUBLE && std::isinf(self->dv)) {
-    ret_sv = p->new_sv((I32)1);
-  }
-  else {
-    ret_sv = p->new_sv((I32)0);
-  }
+  int ret = Rstats::ElementFunc::is_infinite(self);
 
-  XPUSHs(ret_sv);
-  XSRETURN(1);
+  return_sv(p->new_sv((I32)ret));
 }
-#line 229 "Rstats.c"
+#line 223 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -240,7 +234,7 @@ XS_EUPXS(XS_Rstats__ElementXS_is_nan)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 63 "Rstats.xs"
+#line 57 "Rstats.xs"
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
 
@@ -252,10 +246,9 @@ XS_EUPXS(XS_Rstats__ElementXS_is_nan)
     ret_sv = p->new_sv((I32)0);
   }
 
-  XPUSHs(ret_sv);
-  XSRETURN(1);
+  return_sv(ret_sv);
 }
-#line 259 "Rstats.c"
+#line 252 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -270,7 +263,7 @@ XS_EUPXS(XS_Rstats__ElementXS_type)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 81 "Rstats.xs"
+#line 74 "Rstats.xs"
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
 
@@ -299,10 +292,9 @@ XS_EUPXS(XS_Rstats__ElementXS_type)
     type_sv = p->new_sv("unknown");
   }
 
-  XPUSHs(type_sv);
-  XSRETURN(1);
+  return_sv(type_sv);
 }
-#line 306 "Rstats.c"
+#line 298 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -317,16 +309,15 @@ XS_EUPXS(XS_Rstats__ElementXS_iv)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 116 "Rstats.xs"
+#line 108 "Rstats.xs"
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
 
   I32 iv = self->iv;
 
-  XPUSHs(p->new_sv(iv));
-  XSRETURN(1);
+  return_sv(p->new_sv(iv));
 }
-#line 330 "Rstats.c"
+#line 321 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -341,16 +332,15 @@ XS_EUPXS(XS_Rstats__ElementXS_dv)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 128 "Rstats.xs"
+#line 119 "Rstats.xs"
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
 
   double dv = self->dv;
 
-  XPUSHs(p->new_sv(dv));
-  XSRETURN(1);
+  return_sv(p->new_sv(dv));
 }
-#line 354 "Rstats.c"
+#line 344 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -365,16 +355,15 @@ XS_EUPXS(XS_Rstats__ElementXS_cv)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 140 "Rstats.xs"
+#line 130 "Rstats.xs"
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
 
   SV* chv_sv = p->new_sv(self->chv);
 
-  XPUSHs(chv_sv);
-  XSRETURN(1);
+  return_sv(chv_sv);
 }
-#line 378 "Rstats.c"
+#line 367 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -389,14 +378,14 @@ XS_EUPXS(XS_Rstats__ElementXS_re)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 152 "Rstats.xs"
+#line 141 "Rstats.xs"
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
 
-  double re = ((std::complex<double>*)self->pv)->real();
+  double re = ((complex<double>*)self->pv)->real();
 
   SV* re_sv;
-  if (std::isinf(re)) {
+  if (isinf(re)) {
     if (re > 0) {
       re_sv = p->new_sv("Inf");
     }
@@ -411,10 +400,9 @@ XS_EUPXS(XS_Rstats__ElementXS_re)
     re_sv = p->new_sv(re);
   }
 
-  XPUSHs(re_sv);
-  XSRETURN(1);
+  return_sv(re_sv);
 }
-#line 418 "Rstats.c"
+#line 406 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -429,14 +417,14 @@ XS_EUPXS(XS_Rstats__ElementXS_im)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 180 "Rstats.xs"
+#line 168 "Rstats.xs"
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
 
-  double im = ((std::complex<double>*)self->pv)->imag();
+  double im = ((complex<double>*)self->pv)->imag();
 
   SV* im_sv;
-  if (std::isinf(im)) {
+  if (isinf(im)) {
     if (im > 0) {
       im_sv = p->new_sv("Inf");
     }
@@ -451,10 +439,9 @@ XS_EUPXS(XS_Rstats__ElementXS_im)
     im_sv = p->new_sv(im);
   }
 
-  XPUSHs(im_sv);
-  XSRETURN(1);
+  return_sv(im_sv);
 }
-#line 458 "Rstats.c"
+#line 445 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -469,13 +456,13 @@ XS_EUPXS(XS_Rstats__ElementXS_flag)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 208 "Rstats.xs"
+#line 195 "Rstats.xs"
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
 
   SV* flag_sv;
   if (self->type == Rstats::ElementType::DOUBLE) {
-    if (std::isinf(self->dv)) {
+    if (isinf(self->dv)) {
       if (self->dv > 0) {
         flag_sv = p->new_sv("inf");
       }
@@ -494,10 +481,9 @@ XS_EUPXS(XS_Rstats__ElementXS_flag)
     flag_sv = p->new_sv("normal");
   }
 
-  XPUSHs(flag_sv);
-  XSRETURN(1);
+  return_sv(flag_sv);
 }
-#line 501 "Rstats.c"
+#line 487 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -512,18 +498,18 @@ XS_EUPXS(XS_Rstats__ElementXS_DESTROY)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 239 "Rstats.xs"
+#line 225 "Rstats.xs"
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
   if (self->type == Rstats::ElementType::COMPLEX) {
-    delete (std::complex<double>*)self->pv;
+    delete (complex<double>*)self->pv;
   }
   else if (self->type == Rstats::ElementType::CHARACTER) {
     delete self->chv;
   }
   delete self;
 }
-#line 527 "Rstats.c"
+#line 513 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -538,15 +524,14 @@ XS_EUPXS(XS_Rstats__ElementFunc_negativeInf_xs)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 255 "Rstats.xs"
+#line 241 "Rstats.xs"
 {
   Rstats::Element* element = Rstats::ElementFunc::create_double(-(INFINITY));
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
 
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
-#line 550 "Rstats.c"
+#line 535 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -561,15 +546,14 @@ XS_EUPXS(XS_Rstats__ElementFunc_Inf_xs)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 266 "Rstats.xs"
+#line 251 "Rstats.xs"
 {
   Rstats::Element* element = Rstats::ElementFunc::create_double(INFINITY);
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
 
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
-#line 573 "Rstats.c"
+#line 557 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -584,15 +568,14 @@ XS_EUPXS(XS_Rstats__ElementFunc_NaN_xs)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 277 "Rstats.xs"
+#line 261 "Rstats.xs"
 {
   Rstats::Element* element = Rstats::ElementFunc::create_double(NAN);
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
 
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
-#line 596 "Rstats.c"
+#line 579 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -607,7 +590,7 @@ XS_EUPXS(XS_Rstats__ElementFunc_character_xs)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 288 "Rstats.xs"
+#line 271 "Rstats.xs"
 {
   SV* value_sv = ST(0);
   char* chv = p->pv(value_sv);
@@ -618,10 +601,9 @@ XS_EUPXS(XS_Rstats__ElementFunc_character_xs)
 
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
 
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
-#line 625 "Rstats.c"
+#line 607 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -636,7 +618,7 @@ XS_EUPXS(XS_Rstats__ElementFunc_complex_xs)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 305 "Rstats.xs"
+#line 287 "Rstats.xs"
 {
   SV* re_sv = ST(0);
   SV* im_sv = ST(1);
@@ -644,7 +626,7 @@ XS_EUPXS(XS_Rstats__ElementFunc_complex_xs)
   double re = p->nv(re_sv);
   double im = p->nv(im_sv);
 
-  std::complex<double>* z = new std::complex<double>(re, im);
+  complex<double>* z = new complex<double>(re, im);
 
   Rstats::Element* element = new Rstats::Element;
   element->pv = (void*)z;
@@ -652,10 +634,9 @@ XS_EUPXS(XS_Rstats__ElementFunc_complex_xs)
 
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
 
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
-#line 659 "Rstats.c"
+#line 640 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -670,7 +651,7 @@ XS_EUPXS(XS_Rstats__ElementFunc_logical_xs)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 327 "Rstats.xs"
+#line 308 "Rstats.xs"
 {
   SV* value_sv = ST(0);
   I32 iv = p->iv(value_sv);
@@ -681,10 +662,9 @@ XS_EUPXS(XS_Rstats__ElementFunc_logical_xs)
 
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
 
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
-#line 688 "Rstats.c"
+#line 668 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -699,7 +679,7 @@ XS_EUPXS(XS_Rstats__ElementFunc_integer_xs)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 344 "Rstats.xs"
+#line 324 "Rstats.xs"
 {
   SV* value_sv = ST(0);
   I32 iv = p->iv(value_sv);
@@ -710,10 +690,9 @@ XS_EUPXS(XS_Rstats__ElementFunc_integer_xs)
 
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
 
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
-#line 717 "Rstats.c"
+#line 696 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -728,7 +707,7 @@ XS_EUPXS(XS_Rstats__ElementFunc_double_xs)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 361 "Rstats.xs"
+#line 340 "Rstats.xs"
 {
   SV* value_sv = ST(0);
   double dv = p->nv(value_sv);
@@ -737,10 +716,9 @@ XS_EUPXS(XS_Rstats__ElementFunc_double_xs)
 
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
 
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
-#line 744 "Rstats.c"
+#line 722 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -755,7 +733,7 @@ XS_EUPXS(XS_Rstats__Util_cross_product)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 378 "Rstats.xs"
+#line 356 "Rstats.xs"
 {
   SV* values_sv = ST(0);
 
@@ -806,10 +784,9 @@ XS_EUPXS(XS_Rstats__Util_cross_product)
     }
   }
 
-  XPUSHs(result_sv);
-  XSRETURN(1);
+  return_sv(result_sv);
 }
-#line 813 "Rstats.c"
+#line 790 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -824,7 +801,7 @@ XS_EUPXS(XS_Rstats__Util_pos_to_index)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 435 "Rstats.xs"
+#line 412 "Rstats.xs"
 {
   SV* pos_sv = ST(0);
   SV* dim_sv = ST(1);
@@ -849,10 +826,9 @@ XS_EUPXS(XS_Rstats__Util_pos_to_index)
     before_dim_product = dim_product;
   }
 
-  XPUSHs(index_sv);
-  XSRETURN(1);
+  return_sv(index_sv);
 }
-#line 856 "Rstats.c"
+#line 832 "Rstats.c"
 	PUTBACK;
 	return;
     }
@@ -867,7 +843,7 @@ XS_EUPXS(XS_Rstats__Util_index_to_pos)
     PERL_UNUSED_VAR(ax); /* -Wall */
     SP -= items;
     {
-#line 466 "Rstats.xs"
+#line 442 "Rstats.xs"
 {
   SV* index_sv =ST(0);
   SV* dim_values_sv = ST(1);
@@ -888,10 +864,9 @@ XS_EUPXS(XS_Rstats__Util_index_to_pos)
 
   SV* pos_sv = p->new_sv(pos - 1);
 
-  XPUSHs(pos_sv);
-  XSRETURN(1);
+  return_sv(pos_sv);
 }
-#line 895 "Rstats.c"
+#line 870 "Rstats.c"
 	PUTBACK;
 	return;
     }

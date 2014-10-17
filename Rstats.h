@@ -1,10 +1,10 @@
-/* C library */
-#include <math.h>
-
 /* C++ library */
 #include <vector>
 #include <iostream>
 #include <complex>
+#include <cmath>
+
+using namespace std;
 
 namespace Rstats {
   // Rstats::ElementType
@@ -65,7 +65,7 @@ namespace Rstats {
         e1->dv += e2->dv;
       }
       else if (e2->type == Rstats::ElementType::COMPLEX) {
-        *((std::complex<double>*)e1->pv) += *((std::complex<double>*)e2->pv);
+        *((complex<double>*)e1->pv) += *((complex<double>*)e2->pv);
       }
     }
   }
@@ -89,6 +89,19 @@ namespace Rstats {
       element->type = Rstats::ElementType::DOUBLE;
       
       return element;
+    }
+
+    int is_infinite(Rstats::Element* element)
+    {
+      int ret;
+      if (element->type == Rstats::ElementType::DOUBLE && isinf(element->dv)) {
+        ret = 1;
+      }
+      else {
+        ret = 0;
+      }
+      
+      return ret;
     }
   }
 }

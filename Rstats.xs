@@ -19,6 +19,8 @@
 
 Rstats::PerlAPI* p = new Rstats::PerlAPI;
 
+using namespace std;
+
 MODULE = Rstats::ElementXS PACKAGE = Rstats::ElementXS
 
 void
@@ -28,15 +30,14 @@ is_finite(...)
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
   
   SV* ret_sv;
-  if (self->type == Rstats::ElementType::INTEGER || (self->type == Rstats::ElementType::DOUBLE && std::isfinite(self->dv))) {
+  if (self->type == Rstats::ElementType::INTEGER || (self->type == Rstats::ElementType::DOUBLE && isfinite(self->dv))) {
     ret_sv = p->new_sv((I32)1);
   }
   else {
     ret_sv = p->new_sv((I32)0);
   }
   
-  XPUSHs(ret_sv);
-  XSRETURN(1);
+  return_sv(ret_sv);
 }
 
 void
@@ -45,16 +46,9 @@ is_infinite(...)
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
   
-  SV* ret_sv;
-  if (self->type == Rstats::ElementType::DOUBLE && std::isinf(self->dv)) {
-    ret_sv = p->new_sv((I32)1);
-  }
-  else {
-    ret_sv = p->new_sv((I32)0);
-  }
+  int ret = Rstats::ElementFunc::is_infinite(self);
   
-  XPUSHs(ret_sv);
-  XSRETURN(1);
+  return_sv(p->new_sv((I32)ret));
 }
 
 void
@@ -71,8 +65,7 @@ is_nan(...)
     ret_sv = p->new_sv((I32)0);
   }
   
-  XPUSHs(ret_sv);
-  XSRETURN(1);
+  return_sv(ret_sv);
 }
 
 void
@@ -106,8 +99,7 @@ type(...)
     type_sv = p->new_sv("unknown");
   }
   
-  XPUSHs(type_sv);
-  XSRETURN(1);
+  return_sv(type_sv);
 }
 
 void
@@ -118,8 +110,7 @@ iv(...)
   
   I32 iv = self->iv;
   
-  XPUSHs(p->new_sv(iv));
-  XSRETURN(1);
+  return_sv(p->new_sv(iv));
 }
 
 void
@@ -130,8 +121,7 @@ dv(...)
   
   double dv = self->dv;
   
-  XPUSHs(p->new_sv(dv));
-  XSRETURN(1);
+  return_sv(p->new_sv(dv));
 }
 
 void
@@ -142,8 +132,7 @@ cv(...)
   
   SV* chv_sv = p->new_sv(self->chv);
   
-  XPUSHs(chv_sv);
-  XSRETURN(1);
+  return_sv(chv_sv);
 }
 
 void
@@ -152,10 +141,10 @@ re(...)
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
   
-  double re = ((std::complex<double>*)self->pv)->real();
+  double re = ((complex<double>*)self->pv)->real();
   
   SV* re_sv;
-  if (std::isinf(re)) {
+  if (isinf(re)) {
     if (re > 0) {
       re_sv = p->new_sv("Inf");
     }
@@ -170,8 +159,7 @@ re(...)
     re_sv = p->new_sv(re);
   }
 
-  XPUSHs(re_sv);
-  XSRETURN(1);
+  return_sv(re_sv);
 }
 
 void
@@ -180,10 +168,10 @@ im(...)
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
   
-  double im = ((std::complex<double>*)self->pv)->imag();
+  double im = ((complex<double>*)self->pv)->imag();
   
   SV* im_sv;
-  if (std::isinf(im)) {
+  if (isinf(im)) {
     if (im > 0) {
       im_sv = p->new_sv("Inf");
     }
@@ -198,8 +186,7 @@ im(...)
     im_sv = p->new_sv(im);
   }
 
-  XPUSHs(im_sv);
-  XSRETURN(1);
+  return_sv(im_sv);
 }
 
 void
@@ -210,7 +197,7 @@ flag(...)
   
   SV* flag_sv;
   if (self->type == Rstats::ElementType::DOUBLE) {
-    if (std::isinf(self->dv)) {
+    if (isinf(self->dv)) {
       if (self->dv > 0) {
         flag_sv = p->new_sv("inf");
       }
@@ -229,8 +216,7 @@ flag(...)
     flag_sv = p->new_sv("normal");
   }
   
-  XPUSHs(flag_sv);
-  XSRETURN(1);
+  return_sv(flag_sv);
 }
 
 void
@@ -239,7 +225,7 @@ DESTROY(...)
 {
   Rstats::Element* self = p->to_c_obj<Rstats::Element*>(ST(0));
   if (self->type == Rstats::ElementType::COMPLEX) {
-    delete (std::complex<double>*)self->pv;
+    delete (complex<double>*)self->pv;
   }
   else if (self->type == Rstats::ElementType::CHARACTER) {
     delete self->chv;
@@ -256,8 +242,7 @@ negativeInf_xs(...)
   Rstats::Element* element = Rstats::ElementFunc::create_double(-(INFINITY));
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
   
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
 
 void
@@ -267,8 +252,7 @@ Inf_xs(...)
   Rstats::Element* element = Rstats::ElementFunc::create_double(INFINITY);
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
   
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
 
 void
@@ -278,8 +262,7 @@ NaN_xs(...)
   Rstats::Element* element = Rstats::ElementFunc::create_double(NAN);
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
   
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
 
 void
@@ -295,8 +278,7 @@ character_xs(...)
   
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
   
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
 
 void
@@ -309,7 +291,7 @@ complex_xs(...)
   double re = p->nv(re_sv);
   double im = p->nv(im_sv);
   
-  std::complex<double>* z = new std::complex<double>(re, im);
+  complex<double>* z = new complex<double>(re, im);
   
   Rstats::Element* element = new Rstats::Element;
   element->pv = (void*)z;
@@ -317,8 +299,7 @@ complex_xs(...)
   
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
   
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
 
 void
@@ -334,8 +315,7 @@ logical_xs(...)
   
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
   
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
 
 void
@@ -351,8 +331,7 @@ integer_xs(...)
   
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
   
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
 
 void
@@ -366,8 +345,7 @@ double_xs(...)
   
   SV* element_obj = p->to_perl_obj(element, "Rstats::ElementXS");
   
-  XPUSHs(element_obj);
-  XSRETURN(1);
+  return_sv(element_obj);
 }
 
 MODULE = Rstats::Util PACKAGE = Rstats::Util
@@ -425,8 +403,7 @@ cross_product(...)
     }
   }
 
-  XPUSHs(result_sv);
-  XSRETURN(1);
+  return_sv(result_sv);
 }
 
 void
@@ -456,8 +433,7 @@ pos_to_index(...)
     before_dim_product = dim_product;
   }
   
-  XPUSHs(index_sv);
-  XSRETURN(1);
+  return_sv(index_sv);
 }
 
 void
@@ -483,8 +459,7 @@ index_to_pos(...)
   
   SV* pos_sv = p->new_sv(pos - 1);
   
-  XPUSHs(pos_sv);
-  XSRETURN(1);
+  return_sv(pos_sv);
 }
 
 MODULE = Rstats PACKAGE = Rstats

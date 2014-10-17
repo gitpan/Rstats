@@ -32,8 +32,6 @@
       },
       "runtime" : {
          "requires" : {
-            "Imager" : "1.000",
-            "Imager::Graph" : "0.11",
             "Math::Round" : "0.06",
             "Object::Simple" : "3.10",
             "Test::More" : "0",
@@ -42,5 +40,5 @@
       }
    },
    "release_status" : "stable",
-   "version" : "0.0106"
+   "version" : "0.0107"
 }
