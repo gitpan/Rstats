@@ -5,9 +5,8 @@ lib/Rstats/Container.pm
 lib/Rstats/Container/Array.pm
 lib/Rstats/Container/DataFrame.pm
 lib/Rstats/Container/List.pm
-lib/Rstats/Element.pm
-lib/Rstats/ElementFunc.pm
-lib/Rstats/ElementXS.pm
+lib/Rstats/Elements.pm
+lib/Rstats/ElementsFunc.pm
 lib/Rstats/Func.pm
 lib/Rstats/Util.pm
 Makefile.PL
@@ -16,7 +15,7 @@ ppport.h
 README.md
 Rstats.h
 Rstats.xs
-RstatsPerlAPI.h
+Rstats_include.h
 t/array-mode.t
 t/array-operator.t
 t/array.t
