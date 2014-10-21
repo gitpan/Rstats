@@ -210,7 +210,7 @@ namespace Rstats {
       return perl_obj;
     }
   };
-
+  
   // Rstats::ElementsType
   namespace ElementsType {
     enum Enum {
@@ -221,136 +221,183 @@ namespace Rstats {
       CHARACTER = 16
     };
   }
+  
+  namespace Values {
+    // Rstats::Values::Character
+    typedef std::vector<SV*> Character;
+    
+    // Rstats::Values::Complex
+    typedef std::vector<std::complex<double> > Complex;
+    
+    // Rstats::Values::Double
+    typedef std::vector<double> Double;
+    
+    // Rstats::Values::Integer
+    typedef std::vector<I32> Integer;
+  }
 
   // Rstats::Elements
-  typedef struct  {
-    public:
-    void* values;
-    int size;
+  class Elements {
+    private:
     Rstats::ElementsType::Enum type;
-    std::map<int, int>* na_positions;
-  } Elements;
+    void* values;
+    std::map<I32, I32> na_positions;
+    
+    public:
+    
+    Rstats::Values::Character* get_character_values() {
+      return (Rstats::Values::Character*)this->values;
+    }
+    
+    Rstats::Values::Complex* get_complex_values() {
+      return (Rstats::Values::Complex*)this->values;
+    }
+    
+    Rstats::Values::Double* get_double_values() {
+      return (Rstats::Values::Double*)this->values;
+    }
+    
+    Rstats::Values::Integer* get_integer_values() {
+      return (Rstats::Values::Integer*)this->values;
+    }
+    
+    Rstats::ElementsType::Enum get_type() {
+      return this->type;
+    }
+    
+    void add_na_position (I32 position) {
+      this->na_positions[position] = 1;
+    }
+
+    bool exists_na_position (I32 position) {
+      return this->na_positions.count(position);
+    }
+    
+    void merge_na_positions (Rstats::Elements* elements) {
+      for(std::map<I32, I32>::iterator it = elements->na_positions.begin(); it != elements->na_positions.end(); ++it) {
+        this->add_na_position(it->first);
+      }
+    }
+    
+    I32 get_size () {
+      if (this->type == Rstats::ElementsType::CHARACTER) {
+        return this->get_character_values()->size();
+      }
+      else if (this->type == Rstats::ElementsType::COMPLEX) {
+        return this->get_complex_values()->size();
+      }
+      else if (this->type == Rstats::ElementsType::DOUBLE) {
+        return this->get_double_values()->size();
+      }
+      else if (this->type == Rstats::ElementsType::INTEGER || Rstats::ElementsType::LOGICAL) {
+        return this->get_integer_values()->size();
+      }
+    }
+    
+    static Rstats::Elements* new_double(double dv) {
+      Rstats::Elements* elements = new Rstats::Elements;
+      elements->values = new Rstats::Values::Double(1, dv);
+      elements->type = Rstats::ElementsType::DOUBLE;
+      
+      return elements;
+    }
+
+    static Rstats::Elements* new_character(SV* str_sv) {
+
+      SV* new_str_sv = Rstats::Perl::new_sv(str_sv);
+      SvREFCNT_inc(new_str_sv);
+
+      Rstats::Elements* elements = new Rstats::Elements;
+      elements->values = new Rstats::Values::Character(1, new_str_sv);
+      elements->type = Rstats::ElementsType::CHARACTER;
+      
+      return elements;
+    }
+
+    static Rstats::Elements* new_complex(double re, double im) {
+      
+      std::complex<double> z(re, im);
+      Rstats::Elements* elements = new Rstats::Elements;
+      elements->values = new Rstats::Values::Complex(1, z);
+      elements->type = Rstats::ElementsType::COMPLEX;
+      
+      return elements;
+    }
+
+    static Rstats::Elements* new_complex(std::complex<double> z) {
+      
+      Rstats::Elements* elements = new Rstats::Elements;
+      elements->values = new Rstats::Values::Complex(1, z);
+      elements->type = Rstats::ElementsType::COMPLEX;
+      
+      return elements;
+    }
+    
+    static Rstats::Elements* new_logical(int iv) {
+      Rstats::Elements* elements = new Rstats::Elements;
+      elements->values = new Rstats::Values::Integer(1, iv);
+      elements->type = Rstats::ElementsType::LOGICAL;
+      
+      return elements;
+    }
+    
+    static Rstats::Elements* new_logical(Rstats::Values::Integer* values) {
+      Rstats::Elements* elements = new Rstats::Elements;
+      elements->values = values;
+      elements->type = Rstats::ElementsType::LOGICAL;
+      
+      return elements;
+    }
+    
+    static Rstats::Elements* new_true() {
+      return new_logical(1);
+    }
+
+    static Rstats::Elements* new_false() {
+      return new_logical(0);
+    }
+    
+    static Rstats::Elements* new_integer(int iv) {
+      
+      Rstats::Elements* elements = new Rstats::Elements;
+      elements->values = new Rstats::Values::Integer(1, iv);
+      elements->type = Rstats::ElementsType::INTEGER;
+      
+      return elements;
+    }
+
+    static Rstats::Elements* new_NaN() {
+      return new_double(NAN);
+    }
+
+    static Rstats::Elements* new_negativeInf() {
+      return new_double(-(INFINITY));
+    }
+    
+    static Rstats::Elements* new_Inf() {
+      return new_double(INFINITY);
+    }
+    
+    static Rstats::Elements* new_NA() {
+      Rstats::Elements* elements = new Rstats::Elements;
+      elements->values = new Rstats::Values::Integer(1, 0);
+      elements->type = Rstats::ElementsType::LOGICAL;
+      elements->add_na_position((I32)0);
+      
+      return elements;
+    }
+  };
   
   // Rstats::ElementsFunc
   namespace ElementsFunc {
     
-    Rstats::Elements* new_double(double dv)
-    {
-      Rstats::Elements* elements = new Rstats::Elements;
-      std::vector<double>* values = new std::vector<double>(1);
-      (*values)[0] = dv;
-      elements->values = values;
-      elements->type = Rstats::ElementsType::DOUBLE;
-      elements->size = values->size();
-      elements->na_positions = new std::map<int, int>();
-      
-      return elements;
-    }
-
-    Rstats::Elements* new_character(SV* str_sv) {
-      Rstats::Elements* elements = new Rstats::Elements;
-      std::vector<SV*>* values = new std::vector<SV*>(1);
-      
-      SV* new_str_sv = Rstats::Perl::new_sv(str_sv);
-      SvREFCNT_inc(new_str_sv);
-      (*values)[0] = new_str_sv;
-      elements->values = values;
-      elements->type = Rstats::ElementsType::CHARACTER;
-      elements->size = values->size();
-      elements->na_positions = new std::map<int, int>();
-      
-      return elements;
-    }
-
-    Rstats::Elements* new_complex(double re, double im) {
-      
-      std::complex<double>* z = new std::complex<double>(re, im);
-      Rstats::Elements* elements = new Rstats::Elements;
-      std::vector<std::complex<double>*>* values = new std::vector<std::complex<double>*>(1);
-      (*values)[0] = z;
-      elements->values = values;
-      elements->type = Rstats::ElementsType::COMPLEX;
-      elements->size = values->size();
-      elements->na_positions = new std::map<int, int>();
-      
-      return elements;
-    }
-
-    Rstats::Elements* new_logical(int iv) {
-      Rstats::Elements* elements = new Rstats::Elements;
-      std::vector<int>* values = new std::vector<int>(1);
-      (*values)[0] = iv;
-      elements->values = values;
-      elements->type = Rstats::ElementsType::LOGICAL;
-      elements->size = values->size();
-      elements->na_positions = new std::map<int, int>();
-      
-      return elements;
-    }
-    
-    Rstats::Elements* new_logical(std::vector<int>* values) {
-      Rstats::Elements* elements = new Rstats::Elements;
-      elements->values = values;
-      elements->type = Rstats::ElementsType::LOGICAL;
-      elements->size = values->size();
-      elements->na_positions = new std::map<int, int>();
-      
-      return elements;
-    }
-    
-    Rstats::Elements* new_true() {
-      return new_logical(1);
-    }
-
-    Rstats::Elements* new_false() {
-      return new_logical(0);
-    }
-    
-    Rstats::Elements* new_integer(int iv) {
-      
-      Rstats::Elements* elements = new Rstats::Elements;
-      std::vector<int>* values = new std::vector<int>(1);
-      (*values)[0] = iv;
-      elements->values = values;
-      elements->type = Rstats::ElementsType::INTEGER;
-      elements->size = values->size();
-      elements->na_positions = new std::map<int, int>();
-      
-      return elements;
-    }
-
-    Rstats::Elements* new_NaN() {
-      return new_double(NAN);
-    }
-
-    Rstats::Elements* new_negativeInf() {
-      return new_double(-(INFINITY));
-    }
-    
-    Rstats::Elements* new_Inf() {
-      return new_double(INFINITY);
-    }
-    
-    Rstats::Elements* new_NA() {
-      Rstats::Elements* elements = new Rstats::Elements;
-      std::vector<int>* values = new std::vector<int>(1);
-      (*values)[0] = 0;
-      elements->values = values;
-      elements->type = Rstats::ElementsType::LOGICAL;
-      elements->size = values->size();
-      elements->na_positions = new std::map<int, int>();
-      (*elements->na_positions)[0] = 1;
-      
-      return elements;
-    }
-    
     Rstats::Elements* is_infinite(Rstats::Elements* elements) {
       
-      std::vector<int>* rets_values;
-      int size = elements->size;
-      if (elements->type == Rstats::ElementsType::DOUBLE) {
-        std::vector<double>* values = (std::vector<double>*)elements->values;
-        rets_values = new std::vector<int>(size);
+      Rstats::Values::Integer* rets_values;
+      int size = elements->get_size();
+      if (elements->get_type() == Rstats::ElementsType::DOUBLE) {
+        Rstats::Values::Double* values = elements->get_double_values();
+        rets_values = new Rstats::Values::Integer(size);
         for (int i = 0; i < size; i++) {
           if(std::isinf((*values)[i])) {
             (*rets_values)[i] = 1;
@@ -361,20 +408,20 @@ namespace Rstats {
         }
       }
       else {
-        rets_values = new std::vector<int>(size, 0);
+        rets_values = new Rstats::Values::Integer(size, 0);
       }
       
-      Rstats::Elements* rets = new_logical(rets_values);
+      Rstats::Elements* rets = Rstats::Elements::new_logical(rets_values);
       
       return rets;
     }
 
     Rstats::Elements* is_nan(Rstats::Elements* elements) {
-      int size = elements->size;
-      std::vector<int>* rets_values;
-      if (elements->type == Rstats::ElementsType::DOUBLE) {
-        std::vector<double>* values = (std::vector<double>*)elements->values;
-        rets_values = new std::vector<int>(size);
+      int size = elements->get_size();
+      Rstats::Values::Integer* rets_values;
+      if (elements->get_type() == Rstats::ElementsType::DOUBLE) {
+        Rstats::Values::Double* values = elements->get_double_values();
+        rets_values = new Rstats::Values::Integer(size);
         for (int i = 0; i < size; i++) {
           if(std::isnan((*values)[i])) {
             (*rets_values)[i] = 1;
@@ -385,27 +432,27 @@ namespace Rstats {
         }
       }
       else {
-        rets_values = new std::vector<int>(size, 0);
+        rets_values = new Rstats::Values::Integer(size, 0);
       }
       
-      Rstats::Elements* rets = new_logical(rets_values);
+      Rstats::Elements* rets = Rstats::Elements::new_logical(rets_values);
       
       return rets;
     }
 
     Rstats::Elements* is_finite(Rstats::Elements* elements) {
       
-      int size = elements->size;
-      std::vector<int>* rets_values;
-      if (elements->type == Rstats::ElementsType::INTEGER) {
-        std::vector<int>* values = (std::vector<int>*)elements->values;
+      int size = elements->get_size();
+      Rstats::Values::Integer* rets_values;
+      if (elements->get_type() == Rstats::ElementsType::INTEGER) {
+        Rstats::Values::Integer* values = elements->get_integer_values();
         
-        rets_values = new std::vector<int>(size, 1);
+        rets_values = new Rstats::Values::Integer(size, 1);
       }
-      else if (elements->type == Rstats::ElementsType::DOUBLE) {
-        std::vector<double>* values = (std::vector<double>*)elements->values;
+      else if (elements->get_type() == Rstats::ElementsType::DOUBLE) {
+        Rstats::Values::Double* values = elements->get_double_values();
         
-        rets_values = new std::vector<int>(size);
+        rets_values = new Rstats::Values::Integer(size);
         for (int i = 0; i < size; i++) {
           if (std::isfinite((*values)[i])) {
             (*rets_values)[i] = 1;
@@ -416,13 +463,12 @@ namespace Rstats {
         }
       }
       else {
-        rets_values = new std::vector<int>(size, 0);
+        rets_values = new Rstats::Values::Integer(size, 0);
       }
 
-      Rstats::Elements* rets = new_logical(rets_values);
+      Rstats::Elements* rets = Rstats::Elements::new_logical(rets_values);
       
       return rets;
     }
-
   }
 }
