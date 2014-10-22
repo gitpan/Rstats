@@ -930,24 +930,30 @@ sub c {
 
   # Array
   my $x1 = NULL();
-  $x1->elements($elements);
 
   # Upgrade elements and type
   my @modes = keys %$mode_h;
   if (@modes > 1) {
     if ($mode_h->{character}) {
-      $x1 = $x1->as_character;
+      $elements = [map { $_->as_character } @$elements];
+      $x1->mode('character');
     }
     elsif ($mode_h->{complex}) {
-      $x1 = $x1->as_complex;
+      $elements = [map { $_->as_complex } @$elements];
+      $x1->mode('complex');
     }
     elsif ($mode_h->{double}) {
-      $x1 = $x1->as_double;
+      $elements = [map { $_->as_double } @$elements];
+      $x1->mode('double');
     }
   }
   else {
     $x1->mode($modes[0] || 'logical');
   }
+  
+  my $compose_elements = Rstats::Elements->compose($x1->{type}, $elements);
+  my $decompose_elements = $compose_elements->decompose;
+  $x1->elements($decompose_elements);
   
   return $x1;
 }
@@ -1435,6 +1441,7 @@ sub array {
     @$elements = (@$elements) x $repeat_count;
     @$elements = splice @$elements, 0, $dim_product;
   }
+  
   $x1->elements($elements);
   $x1->dim($dim);
   

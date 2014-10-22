@@ -9,23 +9,16 @@ use Rstats::Func;
 #   which
 #   get - logical, undef
 
-# create element
-{
-  # create element - character
-  {
-    my $x1 = c("a", "b", "c");
-    1;
-  }
-
-  # create element - double
-  {
-    my $x1 = c(1, 2, 3);
-    1;
-  }
-}
-
 # get
 {
+  # get - logical
+  {
+    my $v1 = c(1, 3, 5, 7);
+    my $logical_v = c(FALSE, TRUE, FALSE, TRUE, TRUE);
+    my $v2 = $v1->get($logical_v);
+    is_deeply($v2->values, [3, 7, undef]);
+  }
+
   # get - have dimnames
   {
     my $x1 = r->matrix(C('1:24'), 3, 2);
@@ -95,14 +88,6 @@ use Rstats::Func;
     is_deeply($v2->values, [2, 4]);
   }
 
-  # get - logical
-  {
-    my $v1 = c(1, 3, 5, 7);
-    my $logical_v = c(FALSE, TRUE, FALSE, TRUE, TRUE);
-    my $v2 = $v1->get($logical_v);
-    is_deeply($v2->values, [3, 7, undef]);
-  }
-
   # get - grep
   {
     my $v1 = c(1, 2, 3, 4, 5);
@@ -129,6 +114,21 @@ use Rstats::Func;
   {
     my $x1 = array(C('1:24'), c(4, 3, 2));
     is_deeply(r->as_vector($x1)->get(5, 1)->values, [5]);
+  }
+}
+
+# create element
+{
+  # create element - double
+  {
+    my $x1 = c(1, 2, 3);
+    1;
+  }
+  
+  # create element - character
+  {
+    my $x1 = c("a", "b", "c");
+    1;
   }
 }
 

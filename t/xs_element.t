@@ -3,9 +3,18 @@ use strict;
 use warnings;
 
 use Rstats::ElementsFunc;
+use Rstats;
+
 
 # element
 {
+  # element - new_NA
+  {
+    my $e1 = Rstats::ElementsFunc::new_NA();
+    ok($e1->is_na);
+    ok(!defined $e1->value);
+  }
+
   # element - is_finite
   {
     # element - is_finite - double
@@ -97,11 +106,5 @@ use Rstats::ElementsFunc;
     is($e1->type, 'complex');
     is($e1->re, 1.5);
     is($e1->im, 2.5);
-  }
-
-  # element - new_NA
-  {
-    my $e1 = Rstats::ElementsFunc::new_NA();
-    is($e1->type, 'na');
   }
 }

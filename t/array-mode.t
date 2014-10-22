@@ -5,8 +5,35 @@ use warnings;
 use Rstats;
 use Rstats::ElementsFunc;
 
+# array upgrade mode
+{
+  # array decide mode - complex
+  {
+    my $x0 = r->complex(3, 4);
+    my $x0_1 = c(1, $x0);
+    my $x1 = array($x0_1);
+    is($x1->values->[0]->{re}, 1);
+    is($x1->values->[0]->{im}, 0);
+    is($x1->values->[1]->{re}, 3);
+    is($x1->values->[1]->{im}, 4);
+    ok(r->is_complex($x1));
+  }
+
+}
+
 # as_character
 {
+  # as_character - complex
+  {
+    my $x0 = r->complex(1, 2);
+    "$x0";
+    
+    my $x1 = array(r->complex(1, 2));
+    my $x2 = r->as_character($x1);
+    ok(r->is_character($x2));
+    is($x2->values->[0], "1+2i");
+  }
+
   # as_character - NA
   {
     my $r = Rstats::ElementsFunc::logical(1);
@@ -42,14 +69,6 @@ use Rstats::ElementsFunc;
     is($x2->values->[0], "a");
   }
   
-  # as_character - complex
-  {
-    my $x1 = array(r->complex(1, 2));
-    my $x2 = r->as_character($x1);
-    ok(r->is_character($x2));
-    is($x2->values->[0], "1+2i");
-  }
-
   # as_character - complex, 0 + 0i
   {
     my $x1 = array(r->complex(0, 0));
@@ -366,7 +385,6 @@ use Rstats::ElementsFunc;
 {
   # as_complex - Inf
   {
-    $DB::single = 1;
     my $x1 = array(Rstats::ElementsFunc::Inf);
     my $x2 = r->as_complex($x1);
     ok(r->is_complex($x2));
@@ -604,20 +622,6 @@ use Rstats::ElementsFunc;
     is_deeply($x1->elements, [Rstats::ElementsFunc::NA]);
     ok(r->is_logical($x1));
   }
-}
-
-# array upgrade mode
-{
-  # array decide mode - complex
-  {
-    my $x1 = array(c(1, r->complex(3, 4)));
-    is($x1->values->[0]->{re}, 1);
-    is($x1->values->[0]->{im}, 0);
-    is($x1->values->[1]->{re}, 3);
-    is($x1->values->[1]->{im}, 4);
-    ok(r->is_complex($x1));
-  }
-
 }
 
 # is_*
