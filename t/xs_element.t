@@ -5,12 +5,15 @@ use warnings;
 use Rstats::ElementsFunc;
 use Rstats;
 
+my $x1 = c(1, 2, 3);
+1;
+
 
 # element
 {
-  # element - new_NA
+  # element - new_na
   {
-    my $e1 = Rstats::ElementsFunc::new_NA();
+    my $e1 = Rstats::ElementsFunc::new_na();
     ok($e1->is_na);
     ok(!defined $e1->value);
   }
@@ -31,20 +34,20 @@ use Rstats;
 
     # element - is_finite - NaN
     {
-      my $e1 = Rstats::ElementsFunc::new_NaN();
+      my $e1 = Rstats::ElementsFunc::new_nan();
       is($e1->type, 'double');
       ok(!$e1->is_finite);
     }
 
     # element - is_finite - Inf
     {
-      my $e1 = Rstats::ElementsFunc::new_Inf();
+      my $e1 = Rstats::ElementsFunc::new_inf();
       ok(!$e1->is_finite);
     }
 
     # element - is_finite - -Inf
     {
-      my $e1 = Rstats::ElementsFunc::new_negativeInf();
+      my $e1 = Rstats::ElementsFunc::new_negative_inf();
       ok(!$e1->is_finite);
     }
   }
@@ -58,7 +61,7 @@ use Rstats;
 
   # element - Inf_xs
   {
-    my $e1 = Rstats::ElementsFunc::new_Inf();
+    my $e1 = Rstats::ElementsFunc::new_inf();
     is($e1->type, 'double');
     ok($e1->is_infinite);
     ok($e1->dv > 0);
@@ -66,7 +69,7 @@ use Rstats;
   
   # element - negativeInf_xs
   {
-    my $e1 = Rstats::ElementsFunc::new_negativeInf();
+    my $e1 = Rstats::ElementsFunc::new_negative_inf();
     is($e1->type, 'double');
     ok($e1->is_infinite);
     ok($e1->dv < 0);
@@ -74,7 +77,7 @@ use Rstats;
 
   # element - NaN_xs
   {
-    my $e1 = Rstats::ElementsFunc::new_NaN();
+    my $e1 = Rstats::ElementsFunc::new_nan();
     is($e1->type, 'double');
     ok($e1->is_nan);
   }

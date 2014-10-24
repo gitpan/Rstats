@@ -22,7 +22,7 @@ namespace Rstats {
       return SvUV(sv);
     }
 
-    double get_nv(SV* sv) {
+    NV get_nv(SV* sv) {
       return SvNV(sv);
     }
       
@@ -46,7 +46,7 @@ namespace Rstats {
       return sv_2mortal(newSVuv(uv));
     }
     
-    SV* new_scalar_nv(double nv) {
+    SV* new_scalar_nv(NV nv) {
       return sv_2mortal(newSVnv(nv));
     }
     
@@ -196,7 +196,7 @@ namespace Rstats {
 
     template <class X> X to_c_obj(SV* perl_obj_ref) {
       SV* perl_obj = SvROK(perl_obj_ref) ? SvRV(perl_obj_ref) : perl_obj_ref;
-      size_t obj_addr = SvIV(perl_obj);
+      I32 obj_addr = SvIV(perl_obj);
       X c_obj = INT2PTR(X, obj_addr);
       
       return c_obj;
@@ -215,6 +215,7 @@ namespace Rstats {
   // Rstats::ElementsType
   namespace ElementsType {
     enum Enum {
+      NULL_TYPE = 0,
       LOGICAL = 1,
       INTEGER = 2,
       DOUBLE = 4,
@@ -228,10 +229,10 @@ namespace Rstats {
     typedef std::vector<SV*> Character;
     
     // Rstats::Values::Complex
-    typedef std::vector<std::complex<double> > Complex;
+    typedef std::vector<std::complex<NV> > Complex;
     
     // Rstats::Values::Double
-    typedef std::vector<double> Double;
+    typedef std::vector<NV> Double;
     
     // Rstats::Values::Integer
     typedef std::vector<I32> Integer;
@@ -245,6 +246,39 @@ namespace Rstats {
     std::map<I32, I32> na_positions;
     
     public:
+    
+    ~Elements () {
+      I32 length = this->get_length();
+    
+      if (this->is_integer_type() || this->is_logical_type()) {
+        Rstats::Values::Integer* values = this->get_integer_values();
+        delete values;
+      }
+      else if (this->is_double_type()) {
+        Rstats::Values::Double* values = this->get_double_values();
+        delete values;
+      }
+      else if (this->is_complex_type()) {
+        Rstats::Values::Complex* values = this->get_complex_values();
+        delete values;
+      }
+      else if (this->is_character_type()) {
+        Rstats::Values::Character* values = this->get_character_values();
+        for (I32 i = 0; i < length; i++) {
+          if ((*values)[i] != NULL) {
+            SvREFCNT_dec((*values)[i]);
+          }
+        }
+        delete values;
+      }
+    }
+
+    bool is_null_type () { return this->get_type() == Rstats::ElementsType::NULL_TYPE; }
+    bool is_integer_type () { return this->get_type() == Rstats::ElementsType::INTEGER; }
+    bool is_logical_type () { return this->get_type() == Rstats::ElementsType::LOGICAL; }
+    bool is_double_type () { return this->get_type() == Rstats::ElementsType::DOUBLE; }
+    bool is_complex_type () { return this->get_type() == Rstats::ElementsType::COMPLEX; }
+    bool is_character_type () { return this->get_type() == Rstats::ElementsType::CHARACTER; }
     
     Rstats::Values::Character* get_character_values() {
       return (Rstats::Values::Character*)this->values;
@@ -280,151 +314,187 @@ namespace Rstats {
       }
     }
     
-    I32 get_size () {
-      if (this->type == Rstats::ElementsType::CHARACTER) {
+    I32 get_length () {
+      if (this->values == NULL) {
+        return 0;
+      }
+      else if (this->is_character_type()) {
         return this->get_character_values()->size();
       }
-      else if (this->type == Rstats::ElementsType::COMPLEX) {
+      else if (this->is_complex_type()) {
         return this->get_complex_values()->size();
       }
-      else if (this->type == Rstats::ElementsType::DOUBLE) {
+      else if (this->is_double_type()) {
         return this->get_double_values()->size();
       }
-      else if (this->type == Rstats::ElementsType::INTEGER || Rstats::ElementsType::LOGICAL) {
+      else if (this->is_integer_type() || this->is_logical_type()) {
         return this->get_integer_values()->size();
       }
     }
-    
-    static Rstats::Elements* new_character(SV* str_sv) {
 
-      SV* new_str_sv = Rstats::Perl::new_scalar(str_sv);
-      SvREFCNT_inc(new_str_sv);
+    static Rstats::Elements* new_character(I32 length) {
 
       Rstats::Elements* elements = new Rstats::Elements;
-      elements->values = new Rstats::Values::Character(1, new_str_sv);
+      elements->values = new Rstats::Values::Character(length, NULL);
       elements->type = Rstats::ElementsType::CHARACTER;
       
       return elements;
     }
 
-    static Rstats::Elements* new_character(Rstats::Values::Character* values) {
-      Rstats::Elements* elements = new Rstats::Elements;
-      elements->values = values;
+    static Rstats::Elements* new_character(I32 length, SV* str_sv) {
+
+      Rstats::Elements* elements = Rstats::Elements::new_character(length);
+      for (I32 i = 0; i < length; i++) {
+        elements->set_character_value(i, str_sv);
+      }
       elements->type = Rstats::ElementsType::CHARACTER;
       
       return elements;
     }
+
+    SV* get_character_value(I32 pos) {
+      SV* value = (*this->get_character_values())[pos];
+      if (value == NULL) {
+        return NULL;
+      }
+      else {
+        return Rstats::Perl::new_scalar(value);
+      }
+    }
     
-    static Rstats::Elements* new_complex(double re, double im) {
+    void set_character_value(I32 pos, SV* value) {
+      if (value != NULL) {
+        SvREFCNT_dec((*this->get_character_values())[pos]);
+      }
       
-      std::complex<double> z(re, im);
+      SV* new_value = Rstats::Perl::new_scalar(value);
+      SvREFCNT_inc(new_value);
+      (*this->get_character_values())[pos] = new_value;
+    }
+
+    static Rstats::Elements* new_complex(I32 length) {
+      
       Rstats::Elements* elements = new Rstats::Elements;
-      elements->values = new Rstats::Values::Complex(1, z);
+      elements->values = new Rstats::Values::Complex(length, std::complex<NV>(0, 0));
+      elements->type = Rstats::ElementsType::COMPLEX;
+      
+      return elements;
+    }
+        
+    static Rstats::Elements* new_complex(I32 length, std::complex<NV> z) {
+      
+      Rstats::Elements* elements = new Rstats::Elements;
+      elements->values = new Rstats::Values::Complex(length, z);
       elements->type = Rstats::ElementsType::COMPLEX;
       
       return elements;
     }
 
-    static Rstats::Elements* new_complex(std::complex<double> z) {
-      
-      Rstats::Elements* elements = new Rstats::Elements;
-      elements->values = new Rstats::Values::Complex(1, z);
-      elements->type = Rstats::ElementsType::COMPLEX;
-      
-      return elements;
-    }
-
-    static Rstats::Elements* new_complex(Rstats::Values::Complex* values) {
-      Rstats::Elements* elements = new Rstats::Elements;
-      elements->values = values;
-      elements->type = Rstats::ElementsType::COMPLEX;
-      
-      return elements;
+    std::complex<NV> get_complex_value(I32 pos) {
+      return (*this->get_complex_values())[pos];
     }
     
-    static Rstats::Elements* new_double(double dv) {
+    void set_complex_value(I32 pos, std::complex<NV> value) {
+      (*this->get_complex_values())[pos] = value;
+    }
+    
+    static Rstats::Elements* new_double(I32 length) {
       Rstats::Elements* elements = new Rstats::Elements;
-      elements->values = new Rstats::Values::Double(1, dv);
+      elements->values = new Rstats::Values::Double(length);
       elements->type = Rstats::ElementsType::DOUBLE;
       
       return elements;
     }
 
-    static Rstats::Elements* new_double(Rstats::Values::Double* values) {
+    static Rstats::Elements* new_double(I32 length, NV value) {
       Rstats::Elements* elements = new Rstats::Elements;
-      elements->values = values;
+      elements->values = new Rstats::Values::Double(length, value);
       elements->type = Rstats::ElementsType::DOUBLE;
       
       return elements;
     }
     
-    static Rstats::Elements* new_integer_iv(I32 iv) {
+    NV get_double_value(I32 pos) {
+      return (*this->get_double_values())[pos];
+    }
+    
+    void set_double_value(I32 pos, NV value) {
+      (*this->get_double_values())[pos] = value;
+    }
+
+    static Rstats::Elements* new_integer(I32 length) {
       
       Rstats::Elements* elements = new Rstats::Elements;
-      elements->values = new Rstats::Values::Integer(1, iv);
+      elements->values = new Rstats::Values::Integer(length);
       elements->type = Rstats::ElementsType::INTEGER;
       
       return elements;
     }
-    
-    static Rstats::Elements* new_integer(Rstats::Values::Integer* values) {
+
+    static Rstats::Elements* new_integer(I32 length, I32 value) {
+      
       Rstats::Elements* elements = new Rstats::Elements;
-      elements->values = values;
-      elements->type = Rstats::ElementsType::DOUBLE;
+      elements->values = new Rstats::Values::Integer(length, value);
+      elements->type = Rstats::ElementsType::INTEGER;
       
       return elements;
     }
+
+    I32 get_integer_value(I32 pos) {
+      return (*this->get_integer_values())[pos];
+    }
     
-    static Rstats::Elements* new_logical_iv(I32 iv) {
+    void set_integer_value(I32 pos, I32 value) {
+      (*this->get_integer_values())[pos] = value;
+    }
+    
+    static Rstats::Elements* new_logical(I32 length) {
       Rstats::Elements* elements = new Rstats::Elements;
-      elements->values = new Rstats::Values::Integer(1, iv);
+      elements->values = new Rstats::Values::Integer(length);
       elements->type = Rstats::ElementsType::LOGICAL;
       
       return elements;
     }
 
-    static Rstats::Elements* new_logical_size(I32 iv) {
+    static Rstats::Elements* new_logical(I32 length, I32 value) {
       Rstats::Elements* elements = new Rstats::Elements;
-      elements->values = new Rstats::Values::Integer(iv);
-      elements->type = Rstats::ElementsType::LOGICAL;
-      
-      return elements;
-    }
-    
-    static Rstats::Elements* new_logical(Rstats::Values::Integer* values) {
-      Rstats::Elements* elements = new Rstats::Elements;
-      elements->values = values;
+      elements->values = new Rstats::Values::Integer(length, value);
       elements->type = Rstats::ElementsType::LOGICAL;
       
       return elements;
     }
     
     static Rstats::Elements* new_true() {
-      return new_logical_iv(1);
+      return new_logical(1, 1);
     }
 
     static Rstats::Elements* new_false() {
-      return new_logical_iv(0);
+      return new_logical(1, 0);
     }
     
-    static Rstats::Elements* new_NaN() {
-      return new_double(NAN);
+    static Rstats::Elements* new_nan() {
+      return  Rstats::Elements::new_double(1, NAN);
     }
 
-    static Rstats::Elements* new_negativeInf() {
-      return new_double(-(INFINITY));
+    static Rstats::Elements* new_negative_inf() {
+      return Rstats::Elements::new_double(1, -(INFINITY));
     }
     
-    static Rstats::Elements* new_Inf() {
-      return new_double(INFINITY);
+    static Rstats::Elements* new_inf() {
+      return Rstats::Elements::new_double(1, INFINITY);
     }
     
-    static Rstats::Elements* new_NA() {
+    static Rstats::Elements* new_na() {
       Rstats::Elements* elements = new Rstats::Elements;
       elements->values = new Rstats::Values::Integer(1, 0);
       elements->type = Rstats::ElementsType::LOGICAL;
       elements->add_na_position(0);
       
+      return elements;
+    }
+    
+    static Rstats::Elements* new_null() {
+      Rstats::Elements* elements = new Rstats::Elements;
       return elements;
     }
   };
@@ -434,12 +504,13 @@ namespace Rstats {
     
     Rstats::Elements* is_infinite(Rstats::Elements* elements) {
       
-      Rstats::Values::Integer* rets_values;
-      I32 size = elements->get_size();
+      I32 length = elements->get_length();
+      Rstats::Elements* rets;
       if (elements->get_type() == Rstats::ElementsType::DOUBLE) {
+        rets = Rstats::Elements::new_logical(length);
         Rstats::Values::Double* values = elements->get_double_values();
-        rets_values = new Rstats::Values::Integer(size);
-        for (I32 i = 0; i < size; i++) {
+        Rstats::Values::Integer* rets_values = rets->get_integer_values();
+        for (I32 i = 0; i < length; i++) {
           if(std::isinf((*values)[i])) {
             (*rets_values)[i] = 1;
           }
@@ -449,21 +520,19 @@ namespace Rstats {
         }
       }
       else {
-        rets_values = new Rstats::Values::Integer(size, 0);
+        rets = Rstats::Elements::new_logical(length, 0);
       }
-      
-      Rstats::Elements* rets = Rstats::Elements::new_logical(rets_values);
       
       return rets;
     }
 
     Rstats::Elements* is_nan(Rstats::Elements* elements) {
-      I32 size = elements->get_size();
-      Rstats::Values::Integer* rets_values;
+      I32 length = elements->get_length();
+      Rstats::Elements* rets = Rstats::Elements::new_logical(length);
       if (elements->get_type() == Rstats::ElementsType::DOUBLE) {
         Rstats::Values::Double* values = elements->get_double_values();
-        rets_values = new Rstats::Values::Integer(size);
-        for (I32 i = 0; i < size; i++) {
+        Rstats::Values::Integer* rets_values = rets->get_integer_values();
+        for (I32 i = 0; i < length; i++) {
           if(std::isnan((*values)[i])) {
             (*rets_values)[i] = 1;
           }
@@ -473,28 +542,24 @@ namespace Rstats {
         }
       }
       else {
-        rets_values = new Rstats::Values::Integer(size, 0);
+        rets = Rstats::Elements::new_logical(length, 0);
       }
-      
-      Rstats::Elements* rets = Rstats::Elements::new_logical(rets_values);
       
       return rets;
     }
 
     Rstats::Elements* is_finite(Rstats::Elements* elements) {
       
-      I32 size = elements->get_size();
-      Rstats::Values::Integer* rets_values;
-      if (elements->get_type() == Rstats::ElementsType::INTEGER) {
-        Rstats::Values::Integer* values = elements->get_integer_values();
-        
-        rets_values = new Rstats::Values::Integer(size, 1);
+      I32 length = elements->get_length();
+      Rstats::Elements* rets;
+      if (elements->is_integer_type()) {
+        rets = Rstats::Elements::new_logical(length, 1);
       }
-      else if (elements->get_type() == Rstats::ElementsType::DOUBLE) {
+      else if (elements->is_double_type()) {
         Rstats::Values::Double* values = elements->get_double_values();
-        
-        rets_values = new Rstats::Values::Integer(size);
-        for (I32 i = 0; i < size; i++) {
+        rets = Rstats::Elements::new_logical(length);
+        Rstats::Values::Integer* rets_values = rets->get_integer_values();
+        for (I32 i = 0; i < length; i++) {
           if (std::isfinite((*values)[i])) {
             (*rets_values)[i] = 1;
           }
@@ -504,10 +569,8 @@ namespace Rstats {
         }
       }
       else {
-        rets_values = new Rstats::Values::Integer(size, 0);
+        rets = Rstats::Elements::new_logical(length, 0);
       }
-
-      Rstats::Elements* rets = Rstats::Elements::new_logical(rets_values);
       
       return rets;
     }
