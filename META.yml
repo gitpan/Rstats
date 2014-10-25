@@ -21,4 +21,4 @@ requires:
   Math::Round: '0.06'
   Object::Simple: '3.10'
   Text::UnicodeTable::Simple: '0.09'
-version: '0.0117'
+version: '0.0118'
