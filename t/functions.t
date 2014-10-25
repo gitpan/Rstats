@@ -6,6 +6,100 @@ use Rstats;
 use Rstats::ElementsFunc;
 use Math::Trig ();
 
+# Method
+{
+  # add (vector)
+  {
+    my $v1 = c(1, 2, 3);
+    my $v2 = c($v1, 4, 5);
+    is_deeply($v2->values, [1, 2, 3, 4, 5]);
+  }
+
+  # var
+  {
+    my $v1 = c(2, 3, 4, 7, 9);
+    my $var = r->var($v1);
+    is($var->value, 8.5);
+  }
+  
+  # add (array)
+  {
+    my $v1 = c(c(1, 2), 3, 4);
+    is_deeply($v1->values, [1, 2, 3, 4]);
+  }
+  
+  # add to original vector
+  {
+    my $v1 = c(1, 2, 3);
+    $v1->at(r->length($v1)->value + 1)->set(6);
+    is_deeply($v1->values, [1, 2, 3, 6]);
+  }
+  
+  # numeric
+  {
+    my $v1 = r->numeric(3);
+    is_deeply($v1->values, [0, 0, 0]);
+  }
+
+  # length
+  {
+    my $v1 = c(1, 2, 4);
+    my $length = r->length($v1);
+    is($length->value, 3);
+  }
+
+  # prod
+  {
+    my $v1 = c(2, 3, 4);
+    my $prod = r->prod($v1);
+    is($prod->value, 24);
+  }
+  
+  # mean
+  {
+    my $v1 = c(1, 2, 3);
+    my $mean = r->mean($v1);
+    is($mean->value, 2);
+  }
+
+  # sort
+  {
+    # sort - acending
+    {
+      my $v1 = c(2, 1, 5);
+      my $v1_sorted = r->sort($v1);
+      is_deeply($v1_sorted->values, [1, 2, 5]);
+    }
+    
+    # sort - decreasing
+    {
+      my $v1 = c(2, 1, 5);
+      my $v1_sorted = r->sort($v1, {decreasing => 1});
+      is_deeply($v1_sorted->values, [5, 2, 1]);
+    }
+    
+    # sort - contain NA or NaN
+    {
+      my $v1 = c(2, 1, 5, NA, NaN);
+      my $v1_sorted = r->sort($v1);
+      is_deeply($v1_sorted->values, [1, 2, 5]);
+    }
+  }
+}
+
+# sum
+{
+  my $x1 = c(1, 2, 3);
+  my $x2 = r->sum($x1);
+  is_deeply($x2->values->[0], 6);
+}
+
+# ve - minus
+{
+  my $x1 = -ve('1:4');
+  is_deeply($x1->values, [-1, -2, -3, -4]);
+}
+
 # str
 {
 
@@ -17,25 +111,25 @@ use Math::Trig ();
   
   # str - array, one dimention
   {
-    my $x1 = array(C('1:4'), c(4));
+    my $x1 = array(ve('1:4'), c(4));
     is(r->str($x1), 'num [1:4(1d)] 1 2 3 4');
   }
   
   # str - array
   {
-    my $x1 = array(C('1:12'), c(4, 3));
+    my $x1 = array(ve('1:12'), c(4, 3));
     is(r->str($x1), 'num [1:4, 1:3] 1 2 3 4 5 6 7 8 9 10 ...');
   }
   
   # str - vector, more than 10 element
   {
-    my $x1 = C('1:11');
+    my $x1 = ve('1:11');
     is(r->str($x1), 'num [1:11] 1 2 3 4 5 6 7 8 9 10 ...');
   }
 
   # str - vector, 10 element
   {
-    my $x1 = C('1:10');
+    my $x1 = ve('1:10');
     is(r->str($x1), 'num [1:10] 1 2 3 4 5 6 7 8 9 10');
   }
 
@@ -265,8 +359,8 @@ use Math::Trig ();
     my $x2 = r->logb($x1);
     is($x2->values->[0], 0);
     is(sprintf("%.5f", $x2->values->[1]), '2.30259');
-    ok($x2->elements->[2]->is_nan);
-    ok($x2->elements->[3]->is_negative_infinite);
+    ok($x2->decompose_elements->[2]->is_nan);
+    ok($x2->decompose_elements->[3]->is_negative_infinite);
     is_deeply(r->dim($x2)->values, [4]);
     ok(r->is_double($x2));
   }
@@ -293,8 +387,8 @@ use Math::Trig ();
     my $x2 = r->log($x1);
     is($x2->values->[0], 0);
     is(sprintf("%.5f", $x2->values->[1]), '2.30259');
-    ok($x2->elements->[2]->is_nan);
-    ok($x2->elements->[3]->is_negative_infinite);
+    ok($x2->decompose_elements->[2]->is_nan);
+    ok($x2->decompose_elements->[3]->is_negative_infinite);
     is_deeply(r->dim($x2)->values, [4]);
     ok(r->is_double($x2));
   }
@@ -529,29 +623,29 @@ use Math::Trig ();
   # append - after option
   {
     my $v1 = c(1, 2, 3, 4, 5);
-    r->append($v1, 1, {after => 3});
-    is_deeply($v1->values, [1, 2, 3, 1, 4, 5]);
+    my $v2 = r->append($v1, 1, {after => 3});
+    is_deeply($v2->values, [1, 2, 3, 1, 4, 5]);
   }
 
   # append - no after option
   {
     my $v1 = c(1, 2, 3, 4, 5);
-    r->append($v1, 1);
-    is_deeply($v1->values, [1, 2, 3, 4, 5, 1]);
+    my $v2 = r->append($v1, 1);
+    is_deeply($v2->values, [1, 2, 3, 4, 5, 1]);
   }
 
   # append - vector
   {
     my $v1 = c(1, 2, 3, 4, 5);
-    r->append($v1, c([6, 7]));
-    is_deeply($v1->values, [1, 2, 3, 4, 5, 6, 7]);
+    my $v2 = r->append($v1, c([6, 7]));
+    is_deeply($v2->values, [1, 2, 3, 4, 5, 6, 7]);
   }
 }
 
 # replace
 {
   {
-    my $v1 = C('1:10');
+    my $v1 = ve('1:10');
     my $v2 = c(2, 5, 10);
     my $v3 = c(12, 15, 20);
     my $v4 = r->replace($v1, $v2, $v3);
@@ -560,7 +654,7 @@ use Math::Trig ();
   
   # replace - single value
   {
-    my $v1 = C('1:10');
+    my $v1 = ve('1:10');
     my $v2 = c(2, 5, 10);
     my $v4 = r->replace($v1, $v2, 11);
     is_deeply($v4->values, [1, 11, 3, 4, 11, 6, 7, 8, 9, 11]);
@@ -568,7 +662,7 @@ use Math::Trig ();
   
   # replace - few values
   {
-    my $v1 = C('1:10');
+    my $v1 = ve('1:10');
     my $v2 = c(2, 5, 10);
     my $v4 = r->replace($v1, $v2, c(12, 15));
     is_deeply($v4->values, [1, 12, 3, 4, 15, 6, 7, 8, 9, 12]);
@@ -672,7 +766,12 @@ use Math::Trig ();
   {
     my $v1 = c(2*i, 3*i, 4*i);
     my $v2 = r->cumprod($v1);
-    is_deeply($v2->values, [{re => 0, im => 2}, {re => -6, im => 0}, {re => 0, im => -24}])
+    cmp_ok($v2->values->[0]->{re}, '==', 0);
+    cmp_ok($v2->values->[0]->{im}, '==', 2);
+    cmp_ok($v2->values->[1]->{re}, '==', -6);
+    cmp_ok($v2->values->[1]->{im}, '==', 0);
+    cmp_ok($v2->values->[2]->{re}, '==', 0);
+    cmp_ok($v2->values->[2]->{im}, '==', -24);
   }
 }
 
@@ -761,12 +860,12 @@ use Math::Trig ();
 {
   # paste($str, $vector);
   {
-    my $v1 = r->paste('x', C('1:3'));
+    my $v1 = r->paste('x', ve('1:3'));
     is_deeply($v1->values, ['x 1', 'x 2', 'x 3']);
   }
   # paste($str, $vector, {sep => ''});
   {
-    my $v1 = r->paste('x', C('1:3'), {sep => ''});
+    my $v1 = r->paste('x', ve('1:3'), {sep => ''});
     is_deeply($v1->values, ['x1', 'x2', 'x3']);
   }
 }
@@ -944,7 +1043,7 @@ use Math::Trig ();
 {
   # quantile - odd number
   {
-    my $v1 = C('0:100');
+    my $v1 = ve('0:100');
     my $v2 = r->quantile($v1);
     is_deeply($v2->values, [0, 25, 50, 75, 100]);
     is_deeply($v2->names->values, [qw/0%  25%  50%  75% 100% /]);
@@ -952,7 +1051,7 @@ use Math::Trig ();
   
   # quantile - even number
   {
-    my $v1 = C('1:100');
+    my $v1 = ve('1:100');
     my $v2 = r->quantile($v1);
     is_deeply($v2->values, [1.00, 25.75, 50.50, 75.25, 100.00]);
   }

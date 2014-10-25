@@ -29,13 +29,13 @@ sub get {
   }
   elsif ($col_index->is_character) {
     $col_index_values = [];
-    for my $element (@{$col_index->elements}) {
+    for my $element (@{$col_index->decompose_elements}) {
       push @$col_index_values, $self->_name_to_index($element);
     }
   }
   elsif ($col_index->is_logical) {
     for (my $i = 0; $i < @{$col_index->values}; $i++) {
-      push @$col_index_values, $i + 1 if $col_index->elements->[$i];
+      push @$col_index_values, $i + 1 if $col_index->decompose_elements->[$i];
     }
   }
   else {
@@ -59,7 +59,7 @@ sub get {
   }
   
   # Extract columns
-  my $elements = $self->elements;
+  my $elements = $self->list;
   my $new_elements = [];
   for my $i (@{$col_index_values}) {
     push @$new_elements, $elements->[$i - 1];
@@ -72,8 +72,8 @@ sub get {
   
   # Create new data frame
   my $data_frame = Rstats::Container::DataFrame->new;
-  $data_frame->elements($new_elements);
-  $self->_copy_attrs_to($data_frame, [$row_index, Rstats::Func::c($col_index_values)]);
+  $data_frame->list($new_elements);
+  $self->_copy_attrs_to($data_frame, {new_indexes => [$row_index, Rstats::Func::c($col_index_values)]});
   $data_frame->{dimnames}[0] = [1 .. $data_frame->getin(1)->length_value];
   
   return $data_frame;
@@ -93,7 +93,7 @@ sub to_string {
   for (my $i = 1; $i <= @$column_names; $i++) {
     my $x = $self->getin($i);
     $x = $x->as_character if $x->is_factor;
-    push @$columns, $x->elements;
+    push @$columns, $x->decompose_elements;
   }
   my $col_count = @{$columns};
   my $row_count = @{$columns->[0]};

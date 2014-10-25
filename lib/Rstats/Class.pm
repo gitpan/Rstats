@@ -44,7 +44,7 @@ my @funcs = qw/
   atan
   atanh
   c
-  C
+  ve
   charmatch
   chartr
   cbind
@@ -259,7 +259,7 @@ sub _set_seed {
 sub sapply {
   my $x1 = shift->lapply(@_);
   
-  my $x2 = Rstats::Func::c($x1->elements);
+  my $x2 = Rstats::Func::c($x1->list);
   
   return $x2;
 }
@@ -273,11 +273,12 @@ sub lapply {
   my $func = ref $func_name ? $func_name : $self->functions->{$func_name};
   
   my $new_elements = [];
-  for my $element (@{$x1->elements}) {
+  for my $element (@{$x1->list}) {
     push @$new_elements, $func->($element);
   }
   
-  my $x2 = $x1->clone(elements => $new_elements);
+  my $x2 = Rstats::Func::list(@$new_elements);
+  $x1->_copy_attrs_to($x2);
   
   return $x2;
 }
@@ -291,8 +292,8 @@ sub tapply {
   my $func = ref $func_name ? $func_name : $self->functions->{$func_name};
   
   my $new_elements = [];
-  my $x1_elements = $x1->elements;
-  my $x2_elements = $x2->elements;
+  my $x1_elements = $x1->decompose_elements;
+  my $x2_elements = $x2->decompose_elements;
   
   # Group elements
   for (my $i = 0; $i < $x1->length_value; $i++) {
@@ -419,7 +420,7 @@ sub sweep {
     my $e1 = $x2->element(@{$new_index});
     push @$x_result_elements, $e1;
   }
-  my $x3 = $x1->clone(elements => $x_result_elements);
+  my $x3 = Rstats::Func::c($x_result_elements);
   
   my $x4;
   if ($func eq '+') {
@@ -440,6 +441,8 @@ sub sweep {
   elsif ($func eq '%') {
     $x4 = $x1 % $x3;
   }
+  
+  $x1->_copy_attrs_to($x4);
   
   return $x4;
 }

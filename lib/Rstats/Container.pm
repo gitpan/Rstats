@@ -4,45 +4,91 @@ use Object::Simple -base;
 use Rstats::Func;
 use Rstats::Container::List;
 use Carp 'croak';
+use Rstats::Elements;
 
-has 'elements' => sub { [] };
-has 'compose_elements';
+sub is_perl_array_class {
+  my $self  = shift;
+  
+  my $is;
+  eval { $is = $self->isa('Rstats::Container::Array') };
+  
+  return $is;
+}
+
+sub is_perl_list_class {
+  my $self  = shift;
+  
+  my $is;
+  eval { $is = $self->isa('Rstats::Container::List') };
+  
+  return $is;
+}
+
+sub decompose_elements {
+  my $self = shift;
+  
+  if ($self->is_perl_array_class) {
+    return $self->elements->decompose;
+  }
+  else {
+    croak "Can't call decompose_elements methods from list";
+  }
+}
 
 my %types_h = map { $_ => 1 } qw/character complex numeric double integer logical/;
 
 sub _copy_attrs_to {
-  my ($self, $x2, $new_indexs) = @_;
+  my ($self, $x2, $opt) = @_;
+  
+  $opt ||= {};
+  my $new_indexes = $opt->{new_indexes};
+  my $exclude = $opt->{exclude} || [];
+  my %exclude_h = map { $_ => 1 } @$exclude;
+  
+  # dim
+  $x2->{dim} = [@{$self->{dim}}] if !$exclude_h{dim} && exists $self->{dim};
   
   # class
-  $x2->{class} =  $self->{class} if exists $self->{class};
+  $x2->{class} =  [@{$self->{class}}] if !$exclude_h{class} && exists $self->{class};
 
   # levels
-  $x2->{levels} = $self->{levels} if exists $self->{levels};
+  $x2->{levels} = $self->{levels} if !$exclude_h{levels} && exists $self->{levels};
+  
+  # type
+  $x2->{type} = $self->{type} if !$exclude_h{type} && exists $self->{type};
   
   # names
-  if (exists $self->{names}) {
+  if (!$exclude_h{names} && exists $self->{names}) {
     my $names = [];
-    my $index = $self->is_data_frame ? $new_indexs->[1] : $new_indexs->[0];
+    my $index = $self->is_data_frame ? $new_indexes->[1] : $new_indexes->[0];
     if (defined $index) {
       for my $i (@{$index->values}) {
         push @$names, $self->{names}[$i - 1];
       }
     }
+    else {
+      $names = [@{$self->{names}}];
+    }
     $x2->{names} = $names;
   }
   
   # dimnames
-  if (exists $self->{dimnames}) {
+  if (!$exclude_h{dimnames} && exists $self->{dimnames}) {
     my $new_dimnames = [];
     my $dimnames = $self->{dimnames};
     my $length = @$dimnames;
     for (my $i = 0; $i < $length; $i++) {
       my $dimname = $dimnames->[$i];
       if (defined $dimname && @$dimname) {
-        my $index = $new_indexs->[$i];
+        my $index = $new_indexes->[$i];
         my $new_dimname = [];
-        for my $k (@{$index->values}) {
-          push @$new_dimname, $dimname->[$k - 1];
+        if (defined $index) {
+          for my $k (@{$index->values}) {
+            push @$new_dimname, $dimname->[$k - 1];
+          }
+        }
+        else {
+          $new_dimname = [@$dimname];
         }
         push @$new_dimnames, $new_dimname;
       }
@@ -138,7 +184,7 @@ sub str {
     my @element_str;
     my $max_count = $length > 10 ? 10 : $length;
     my $is_character = $self->is_character;
-    my $elements = $self->elements;
+    my $elements = $self->decompose_elements;
     for (my $i = 0; $i < $max_count; $i++) {
       push @element_str, $self->_element_to_string($elements->[$i], $is_character);
     }
@@ -173,9 +219,8 @@ sub levels {
 sub clone {
   my ($self, %opt) = @_;
   
-  my $clone = {%$self};
-  $clone = bless $clone, ref $self;
-  $clone->{elements} = $opt{elements} if $opt{elements};
+  my $clone = Rstats::Func::c($opt{elements} || $self->decompose_elements);
+  $self->_copy_attrs_to($clone);
   
   return $clone;
 }
@@ -198,7 +243,7 @@ sub _name_to_index {
   
   my $e1_name = $x1_index->element;
   my $found;
-  my $names = $self->names->elements;
+  my $names = $self->names->decompose_elements;
   my $index;
   for (my $i = 0; $i < @$names; $i++) {
     my $name = $names->[$i];
@@ -230,7 +275,13 @@ sub length {
 sub length_value {
   my $self = shift;
   
-  my $length = @{$self->elements};
+  my $length;
+  if ($self->is_perl_array_class) {
+    $length = $self->elements->length_value;
+  }
+  else {
+    $length = @{$self->list}
+  }
   
   return $length;
 }
@@ -242,7 +293,7 @@ sub is_na {
   
   my @a2_elements = map {
     ref $_ eq  'Rstats::Type::NA' ? Rstats::ElementsFunc::TRUE() : Rstats::ElementsFunc::FALSE()
-  } @{$x1->elements};
+  } @{$x1->decompose_elements};
   my $x2 = Rstats::Func::array(\@a2_elements);
   $x2->mode('logical');
   
@@ -250,25 +301,23 @@ sub is_na {
 }
 
 sub as_list {
-  my $container = shift;
+  my $self = shift;
   
-  return $container if $container->is_list;
-
-  my $list = Rstats::Container::List->new;
-  $list->elements($container->elements);
-  
-  return $list;
+  if ($self->is_perl_list_class) {
+    return $self;
+  }
+  else {
+    my $list = Rstats::Container::List->new;
+    $list->list([Rstats::Func::c($self->decompose_elements)]);
+    
+    return $list;
+  }
 }
 
 sub is_list {
-  my $container = shift;
-  
-  my $is_list;
-  eval {
-    $is_list = $container->isa('Rstats::Container::List');
-  };
+  my $self = shift;
 
-  return $is_list ? Rstats::Func::TRUE() : Rstats::Func::FALSE();
+  return $self->is_perl_list_class ? Rstats::Func::TRUE() : Rstats::Func::FALSE();
 }
 
 sub class {
@@ -451,7 +500,7 @@ sub as_matrix {
     $col = 1;
   }
   
-  my $x2_elements = [@{$self->elements}];
+  my $x2_elements = [@{$self->decompose_elements}];
   
   return Rstats::Func::matrix($x2_elements, $row, $col);
 }
@@ -459,7 +508,7 @@ sub as_matrix {
 sub as_array {
   my $self = shift;
   
-  my $self_elements = [@{$self->elements}];
+  my $self_elements = [@{$self->decompose_elements}];
   my $self_dim_elements = [@{$self->dim_as_array->values}];
   
   return $self->array($self_elements, $self_dim_elements);
@@ -468,7 +517,7 @@ sub as_array {
 sub as_vector {
   my $self = shift;
   
-  my $self_elements = [@{$self->elements}];
+  my $self_elements = [@{$self->decompose_elements}];
   
   return Rstats::Func::c($self_elements);
 }
@@ -511,9 +560,10 @@ sub as_complex {
   }
 
   my $x2;
-  my $x_tmp_elements = $x_tmp->elements;
+  my $x_tmp_elements = $x_tmp->decompose_elements;
   my @a2_elements = map { $_->as('complex') } @$x_tmp_elements;
-  $x2 = $x_tmp->clone(elements => \@a2_elements);
+  $x2 = Rstats::Func::c(\@a2_elements);
+  $x_tmp->_copy_attrs_to($x2);
   $x2->{type} = 'complex';
 
   return $x2;
@@ -526,14 +576,15 @@ sub as_double {
   
   my $x2;
   if ($self->is_factor) {
-    my $x2_elements = map { $_->as_double } @{$self->elements};
-    $x2 = Rstats::Func::c($self->elements);
+    my $x2_elements = [map { $_->as_double } @{$self->decompose_elements}];
+    $x2 = Rstats::Func::c($x2_elements);
     $x2->{type} = 'double';
   }
   else {
-    my $self_elements = $self->elements;
+    my $self_elements = $self->decompose_elements;
     my @a2_elements = map { $_->as('double') } @$self_elements;
-    $x2 = $self->clone(elements => \@a2_elements);
+    $x2 = Rstats::Func::c(\@a2_elements);
+    $self->_copy_attrs_to($x2);
     $x2->{type} = 'double';
   }
 
@@ -545,13 +596,14 @@ sub as_integer {
   
   my $x2;
   if ($self->is_factor) {
-    $x2 = Rstats::Func::c($self->elements);
+    $x2 = Rstats::Func::c($self->decompose_elements);
     $x2->{type} = 'integer';
   }
   else {
-   my $self_elements = $self->elements;
+   my $self_elements = $self->decompose_elements;
     my @a2_elements = map { $_->as_integer  } @$self_elements;
-    $x2 = $self->clone(elements => \@a2_elements);
+    $x2 = Rstats::Func::c(\@a2_elements);
+    $self->_copy_attrs_to($x2);
     $x2->{type} = 'integer';
   }
 
@@ -563,13 +615,14 @@ sub as_logical {
   
   my $x2;
   if ($self->is_factor) {
-    $x2 = Rstats::Func::c($self->elements);
+    $x2 = Rstats::Func::c($self->decompose_elements);
     $x2 = $x2->as_logical;
   }
   else {
-    my $self_elements = $self->elements;
+    my $self_elements = $self->decompose_elements;
     my @a2_elements = map { $_->as_logical } @$self_elements;
-    $x2 = $self->clone(elements => \@a2_elements);
+    $x2 = Rstats::Func::c(\@a2_elements);
+    $self->_copy_attrs_to($x2);
     $x2->{type} = 'logical';
   }
 
@@ -585,14 +638,14 @@ sub as_character {
   if ($self->is_factor) {
     my $levels = {};
     my $x_levels = $self->levels;
-    my $x_levels_elements = $x_levels->elements;
+    my $x_levels_elements = $x_levels->decompose_elements;
     my $levels_length = $x_levels->length->value;
     for (my $i = 1; $i <= $levels_length; $i++) {
-      my $x_levels_element = $x_levels->elements->[$i - 1];
+      my $x_levels_element = $x_levels_elements->[$i - 1];
       $levels->{$i} = $x_levels_element->value;
     }
 
-    my $self_elements =  $self->elements;
+    my $self_elements =  $self->decompose_elements;
     my $x2_elements = [];
     for my $self_element (@$self_elements) {
       if ($self_element->is_na) {
@@ -605,11 +658,14 @@ sub as_character {
       }
     }
     $x2 = Rstats::Func::c($x2_elements);
+    $self->_copy_attrs_to($x2)
   }
   else {
-    my $self_elements = $self->elements;
+    my $self_elements = $self->decompose_elements;
     my @a2_elements = map { $_->as_character } @$self_elements;
-    $x2 = $self->clone(elements => \@a2_elements);
+    $x2 = Rstats::Func::c(\@a2_elements);
+    $self->_copy_attrs_to($x2);
+    
     $x2->{type} = 'character';
   }
 
@@ -621,10 +677,11 @@ sub values {
   
   if (@_) {
     my @elements = map { Rstats::ElementsFunc::element($_) } @{$_[0]};
-    $self->{elements} = \@elements;
+    
+    $self->elements(Rstats::Func::c(\@elements)->elements);
   }
   else {
-    my @values = map { defined $_ ? $_->value : undef } @{$self->elements};
+    my @values = map { $_->value } @{$self->decompose_elements};
   
     return \@values;
   }
@@ -635,7 +692,7 @@ sub value {
   
   my $e1 = $self->element(@_);
   
-  return defined $e1 ? $e1->value : Rstats::ElementsFunc::NA();
+  return defined $e1 ? $e1->value : undef;
 }
 
 sub is_vector {

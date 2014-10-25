@@ -5,6 +5,39 @@ use warnings;
 use Rstats;
 use Math::Trig ();
 
+# NULL
+{
+  my $v1 = r->NULL;
+  is_deeply($v1->values, []);
+  is("$v1", 'NULL');
+  $v1->at(3)->set(5);
+  is_deeply($v1->values, [undef, undef, 5]);
+}
+
+
+# tail
+{
+  {
+    my $v1 = c(1, 2, 3, 4, 5, 6, 7);
+    my $tail = r->tail($v1);
+    is_deeply($tail->values, [2, 3, 4, 5, 6, 7]);
+  }
+  
+  # tail - values is low than 6
+  {
+    my $v1 = c(1, 2, 3);
+    my $tail = r->tail($v1);
+    is_deeply($tail->values, [1, 2, 3]);
+  }
+  
+  # tail - n option
+  {
+    my $v1 = c(1, 2, 3, 4);
+    my $tail = r->tail($v1, {n => 3});
+    is_deeply($tail->values, [2, 3, 4]);
+  }
+}
+
 # class
 {
   # class - vector, numeric
@@ -21,7 +54,7 @@ use Math::Trig ();
 
   # class - array
   {
-    my $x1 = array(C('1:24'), c(4, 3, 2));
+    my $x1 = array(ve('1:24'), c(4, 3, 2));
     is_deeply($x1->class->values, ['array']);
   }
   
@@ -174,7 +207,7 @@ use Math::Trig ();
 # sample
 {
   {
-    my $v1 = C('1:100');
+    my $v1 = ve('1:100');
     my $v2 = r->sample($v1, 50);
     is(r->length($v2)->value, 50);
     my $duplicate_h = {};
@@ -193,7 +226,7 @@ use Math::Trig ();
   
   # sample - replace => 0
   {
-    my $v1 = C('1:100');
+    my $v1 = ve('1:100');
     my $v2 = r->sample($v1, 50, {replace => 0});
     is(r->length($v2)->value, 50);
     my $duplicate_h = {};
@@ -212,7 +245,7 @@ use Math::Trig ();
 
   # sample - replace => 0
   {
-    my $v1 = C('1:100');
+    my $v1 = ve('1:100');
     my $v2 = r->sample($v1, 50, {replace => 1});
     is(r->length($v2)->value, 50);
     my $duplicate_h = {};
@@ -233,15 +266,6 @@ use Math::Trig ();
     is(r->length($v2)->value, 5);
     is_deeply($v2->values, [1, 1, 1, 1, 1]);
   }
-}
-
-# NULL
-{
-  my $v1 = r->NULL;
-  is_deeply($v1->values, []);
-  is("$v1", 'NULL');
-  $v1->at(3)->set(5);
-  is_deeply($v1->values, [undef, undef, 5]);
 }
 
 # runif
@@ -321,29 +345,6 @@ use Math::Trig ();
   }
 }
 
-# tail
-{
-  {
-    my $v1 = c(1, 2, 3, 4, 5, 6, 7);
-    my $tail = r->tail($v1);
-    is_deeply($tail->values, [2, 3, 4, 5, 6, 7]);
-  }
-  
-  # tail - values is low than 6
-  {
-    my $v1 = c(1, 2, 3);
-    my $tail = r->tail($v1);
-    is_deeply($tail->values, [1, 2, 3]);
-  }
-  
-  # tail - n option
-  {
-    my $v1 = c(1, 2, 3, 4);
-    my $tail = r->tail($v1, {n => 3});
-    is_deeply($tail->values, [2, 3, 4]);
-  }
-}
-
 # length
 {
   my $x = array(c(1, 2, 3));
@@ -385,15 +386,15 @@ use Math::Trig ();
     is_deeply($v->values, [1, 2, 3]);
   }
   
-  # c(C('1:3')
+  # c(ve('1:3')
   {
-    my $v = C('1:3');
+    my $v = ve('1:3');
     is_deeply($v->values, [1, 2, 3]);
   }
   
   # c('0.5*1:3')
   {
-    my $v = C('0.5*1:3');
+    my $v = ve('0.5*1:3');
     is_deeply($v->values, [1, 1.5, 2, 2.5, 3]);
   }
 }
@@ -456,91 +457,4 @@ use Math::Trig ();
   my $v1 = c(3, 4, 5);
   my $v2 = r->seq({along => $v1});
   is_deeply($v2->values, [1, 2, 3]);
-}
-
-# Method
-{
-  # add (vector)
-  {
-    my $v1 = c(1, 2, 3);
-    my $v2 = c($v1, 4, 5);
-    is_deeply($v2->values, [1, 2, 3, 4, 5]);
-  }
-  # add (array)
-  {
-    my $v1 = c(c(1, 2), 3, 4);
-    is_deeply($v1->values, [1, 2, 3, 4]);
-  }
-  
-  # add to original vector
-  {
-    my $v1 = c(1, 2, 3);
-    $v1->at(r->length($v1)->value + 1)->set(6);
-    is_deeply($v1->values, [1, 2, 3, 6]);
-  }
-  
-  # numeric
-  {
-    my $v1 = r->numeric(3);
-    is_deeply($v1->values, [0, 0, 0]);
-  }
-
-  # length
-  {
-    my $v1 = c(1, 2, 4);
-    my $length = r->length($v1);
-    is($length->value, 3);
-  }
-
-  # sum
-  {
-    my $v1 = c(1, 2, 3);
-    my $sum = r->sum($v1);
-    is($sum->value, 6);
-  }
-
-  # prod
-  {
-    my $v1 = c(2, 3, 4);
-    my $prod = r->prod($v1);
-    is($prod->value, 24);
-  }
-  
-  # mean
-  {
-    my $v1 = c(1, 2, 3);
-    my $mean = r->mean($v1);
-    is($mean->value, 2);
-  }
-
-  # var
-  {
-    my $v1 = c(2, 3, 4, 7, 9);
-    my $var = r->var($v1);
-    is($var->value, 8.5);
-  }
-  
-  # sort
-  {
-    # sort - acending
-    {
-      my $v1 = c(2, 1, 5);
-      my $v1_sorted = r->sort($v1);
-      is_deeply($v1_sorted->values, [1, 2, 5]);
-    }
-    
-    # sort - decreasing
-    {
-      my $v1 = c(2, 1, 5);
-      my $v1_sorted = r->sort($v1, {decreasing => 1});
-      is_deeply($v1_sorted->values, [5, 2, 1]);
-    }
-    
-    # sort - contain NA or NaN
-    {
-      my $v1 = c(2, 1, 5, NA, NaN);
-      my $v1_sorted = r->sort($v1);
-      is_deeply($v1_sorted->values, [1, 2, 5]);
-    }
-  }
 }
