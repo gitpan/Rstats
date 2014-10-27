@@ -30,43 +30,43 @@ namespace Rstats {
       return SvPV_nolen(sv);
     }
 
-    SV* new_scalar(SV* sv) {
+    SV* new_sv(SV* sv) {
       return sv_2mortal(newSVsv(sv));
     }
 
-    SV* new_scalar(const char* pv) {
+    SV* new_sv(const char* pv) {
       return sv_2mortal(newSVpvn(pv, strlen(pv)));
     }
     
-    SV* new_scalar_iv(I32 iv) {
+    SV* new_sv_iv(I32 iv) {
       return sv_2mortal(newSViv(iv));
     }
 
-    SV* new_scalar_uv(U32 uv) {
+    SV* new_sv_uv(U32 uv) {
       return sv_2mortal(newSVuv(uv));
     }
     
-    SV* new_scalar_nv(NV nv) {
+    SV* new_sv_nv(NV nv) {
       return sv_2mortal(newSVnv(nv));
     }
     
-    AV* new_array() {
+    AV* new_av() {
       return (AV*)sv_2mortal((SV*)newAV());
     }
     
-    SV* new_array_ref() {
-      return sv_2mortal(newRV_inc((SV*)new_array()));
+    SV* new_av_ref() {
+      return sv_2mortal(newRV_inc((SV*)new_av()));
     }
     
-    HV* new_hash() {
+    HV* new_hv() {
       return (HV*)sv_2mortal((SV*)newHV());
     }
 
-    SV* new_hash_ref() {
-      return sv_2mortal(newRV_inc((SV*)new_hash()));
+    SV* new_hv_ref() {
+      return sv_2mortal(newRV_inc((SV*)new_hv()));
     }
 
-    SV* scalar_deref(SV* ref) {
+    SV* deref_sv(SV* ref) {
       if (SvROK(ref)) {
         return SvRV(ref);
       }
@@ -75,7 +75,7 @@ namespace Rstats {
       }
     }
     
-    AV* array_deref(SV* ref) {
+    AV* deref_av(SV* ref) {
       if (SvROK(ref)) {
         return (AV*)SvRV(ref);
       }
@@ -84,39 +84,39 @@ namespace Rstats {
       }
     }
     
-    void array_extend(AV* av, I32 key) {
+    void extend_av(AV* av, I32 key) {
       return av_extend(av, key);
     }
 
-    void array_extend(SV* av_ref, I32 key) {
-      AV* av = array_deref(av_ref);
+    void extend_av(SV* av_ref, I32 key) {
+      AV* av = deref_av(av_ref);
       return av_extend(av, key);
     }
     
-    I32 array_length (AV* av) {
+    I32 length_av (AV* av) {
       return av_len(av) + 1;
     }
 
-    I32 array_length (SV* av_ref) {
-      return av_len(array_deref(av_ref)) + 1;
+    I32 length_av (SV* av_ref) {
+      return av_len(deref_av(av_ref)) + 1;
     }
     
-    SV* array_fetch(AV* av, I32 pos) {
+    SV* fetch_av(AV* av, I32 pos) {
       SV** const element_ptr = av_fetch(av, pos, FALSE);
       SV* const element = element_ptr ? *element_ptr : &PL_sv_undef;
       
       return element;
     }
     
-    SV* array_fetch(SV* av_ref, I32 pos) {
-      AV* av = array_deref(av_ref);
+    SV* fetch_av(SV* av_ref, I32 pos) {
+      AV* av = deref_av(av_ref);
       SV** const element_ptr = av_fetch(av, pos, FALSE);
       SV* const element = element_ptr ? *element_ptr : &PL_sv_undef;
       
       return element;
     }
 
-    HV* hash_deref(SV* ref) {
+    HV* deref_hv(SV* ref) {
       if (SvROK(ref)) {
         return (HV*)SvRV(ref);
       }
@@ -125,73 +125,81 @@ namespace Rstats {
       }
     }
     
-    SV* hash_fetch(HV* hv, const char* key) {
+    SV* fetch_hv(HV* hv, const char* key) {
       SV** const element_ptr = hv_fetch(hv, key, strlen(key), FALSE);
       SV* const element = element_ptr ? *element_ptr : &PL_sv_undef;
       
       return element;
     }
 
-    SV* hash_fetch(HV* hv, SV* key_sv) {
-      return hash_fetch(hv, get_pv(key_sv));
+    SV* fetch_hv(HV* hv, SV* key_sv) {
+      return fetch_hv(hv, get_pv(key_sv));
     }
     
-    SV* hash_fetch(SV* hv_ref, const char* key) {
-      HV* hv = hash_deref(hv_ref);
+    SV* fetch_hv(SV* hv_ref, const char* key) {
+      HV* hv = deref_hv(hv_ref);
       SV** const element_ptr = hv_fetch(hv, key, strlen(key), FALSE);
       SV* const element = element_ptr ? *element_ptr : &PL_sv_undef;
       
       return element;
     }
 
-    SV* hash_fetch(SV* hv_ref, SV* key_sv) {
-      return hash_fetch(hv_ref, get_pv(key_sv));
+    SV* fetch_hv(SV* hv_ref, SV* key_sv) {
+      return fetch_hv(hv_ref, get_pv(key_sv));
     }
     
-    void array_store(AV* av, I32 pos, SV* element) {
-      av_store(av, pos, SvREFCNT_inc(element));
-    }
-    
-    void array_store(SV* av_ref, I32 pos, SV* element) {
-      AV* av = array_deref(av_ref);
-      av_store(av, pos, SvREFCNT_inc(element));
+    SV* refcnt_inc_sv(SV* sv) {
+      return SvREFCNT_inc(sv);
     }
 
-    SV* array_copy(SV* av_ref_sv) {
-      SV* new_array_ref_sv = new_array_ref();
+    void refcnt_dec_sv(SV* sv) {
+      return SvREFCNT_dec(sv);
+    }
+    
+    void store_av(AV* av, I32 pos, SV* element) {
+      av_store(av, pos, refcnt_inc_sv(element));
+    }
+    
+    void store_av(SV* av_ref, I32 pos, SV* element) {
+      AV* av = deref_av(av_ref);
+      av_store(av, pos, refcnt_inc_sv(element));
+    }
+
+    SV* copy_av(SV* av_ref_sv) {
+      SV* new_av_ref_sv = new_av_ref();
       
-      for (I32 i = 0; i < array_length(av_ref_sv); i++) {
-        array_store(new_array_ref_sv, i, new_scalar(array_fetch(av_ref_sv, i)));
+      for (I32 i = 0; i < length_av(av_ref_sv); i++) {
+        store_av(new_av_ref_sv, i, new_sv(fetch_av(av_ref_sv, i)));
       }
       
-      return new_array_ref_sv;
+      return new_av_ref_sv;
     }
     
-    void hash_store(HV* hv, const char* key, SV* element) {
-      hv_store(hv, key, strlen(key), SvREFCNT_inc(element), FALSE);
+    void store_hv(HV* hv, const char* key, SV* element) {
+      hv_store(hv, key, strlen(key), refcnt_inc_sv(element), FALSE);
     }
 
-    void hash_store(SV* hv_ref, const char* key, SV* element) {
-      HV* hv = hash_deref(hv_ref);
-      hv_store(hv, key, strlen(key), SvREFCNT_inc(element), FALSE);
+    void store_hv(SV* hv_ref, const char* key, SV* element) {
+      HV* hv = deref_hv(hv_ref);
+      hv_store(hv, key, strlen(key), refcnt_inc_sv(element), FALSE);
     }
     
-    void array_push(AV* av, SV* sv) {
-      av_push(av, SvREFCNT_inc(sv));
+    void push_av(AV* av, SV* sv) {
+      av_push(av, refcnt_inc_sv(sv));
     }
     
-    void array_push(SV* av_ref, SV* sv) {
-      av_push(array_deref(av_ref), SvREFCNT_inc(sv));
+    void push_av(SV* av_ref, SV* sv) {
+      av_push(deref_av(av_ref), refcnt_inc_sv(sv));
     }
 
-    void array_unshift(AV* av, SV* sv) {
+    void unshit_av(AV* av, SV* sv) {
       av_unshift(av, 1);
-      array_store(av, (I32)0, sv);
+      store_av(av, (I32)0, sv);
     }
     
-    void array_unshift(SV* av_ref, SV* sv) {
-      av_unshift(array_deref(av_ref), 1);
-      array_store(array_deref(av_ref), 0, sv);
+    void unshit_av(SV* av_ref, SV* sv) {
+      av_unshift(deref_av(av_ref), 1);
+      store_av(deref_av(av_ref), 0, sv);
     }
 
     template <class X> X to_c_obj(SV* perl_obj_ref) {
@@ -204,7 +212,7 @@ namespace Rstats {
 
     template <class X> SV* to_perl_obj(X c_obj, const char* class_name) {
       I32 obj_addr = PTR2IV(c_obj);
-      SV* obj_addr_sv = new_scalar_iv(obj_addr);
+      SV* obj_addr_sv = new_sv_iv(obj_addr);
       SV* obj_addr_sv_ref = new_ref(obj_addr_sv);
       SV* perl_obj = sv_bless(obj_addr_sv_ref, gv_stashpv(class_name, 1));
       
@@ -266,7 +274,7 @@ namespace Rstats {
         Rstats::Values::Character* values = this->get_character_values();
         for (I32 i = 0; i < length; i++) {
           if ((*values)[i] != NULL) {
-            SvREFCNT_dec((*values)[i]);
+            Rstats::Perl::refcnt_dec_sv((*values)[i]);
           }
         }
         delete values;
@@ -358,18 +366,18 @@ namespace Rstats {
         return NULL;
       }
       else {
-        return Rstats::Perl::new_scalar(value);
+        return Rstats::Perl::new_sv(value);
       }
     }
     
     void set_character_value(I32 pos, SV* value) {
       if (value != NULL) {
-        SvREFCNT_dec((*this->get_character_values())[pos]);
+        Rstats::Perl::refcnt_dec_sv((*this->get_character_values())[pos]);
       }
       
-      SV* new_value = Rstats::Perl::new_scalar(value);
-      SvREFCNT_inc(new_value);
-      (*this->get_character_values())[pos] = new_value;
+      SV* new_value = Rstats::Perl::new_sv(value);
+      (*this->get_character_values())[pos]
+        = Rstats::Perl::refcnt_inc_sv(new_value);
     }
 
     static Rstats::Elements* new_complex(I32 length) {
@@ -787,7 +795,433 @@ namespace Rstats {
       
       return e2;
     }
-                        
+
+    Rstats::Elements* sin(Rstats::Elements* e1) {
+      
+      I32 length = e1->get_length();
+      Rstats::Elements* e2;
+      if (e1->is_character_type()) {
+        croak("Error in a - b : non-numeric argument to binary operator");
+      }
+      else if (e1->is_complex_type()) {
+        e2 = Rstats::Elements::new_complex(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_complex_value(i, std::sin(e1->get_complex_value(i)));
+        }
+      }
+      else if (e1->is_double_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::sin(e1->get_double_value(i)));
+        }
+      }
+      else if (e1->is_integer_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::sin(e1->get_integer_value(i)));
+        }
+      }
+      else if (e1->is_logical_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::sin(e1->get_integer_value(i)));
+        }
+      }
+      else {
+        croak("Invalid type");
+      }
+      
+      e2->merge_na_positions(e1);
+      
+      return e2;
+    }
+    
+    Rstats::Elements* cos(Rstats::Elements* e1) {
+      
+      I32 length = e1->get_length();
+      Rstats::Elements* e2;
+      if (e1->is_character_type()) {
+        croak("Error in a - b : non-numeric argument to binary operator");
+      }
+      else if (e1->is_complex_type()) {
+        e2 = Rstats::Elements::new_complex(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_complex_value(i, std::cos(e1->get_complex_value(i)));
+        }
+      }
+      else if (e1->is_double_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::cos(e1->get_double_value(i)));
+        }
+      }
+      else if (e1->is_integer_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::cos(e1->get_integer_value(i)));
+        }
+      }
+      else if (e1->is_logical_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::cos(e1->get_integer_value(i)));
+        }
+      }
+      else {
+        croak("Invalid type");
+      }
+      
+      e2->merge_na_positions(e1);
+      
+      return e2;
+    }
+
+    Rstats::Elements* tan(Rstats::Elements* e1) {
+      
+      I32 length = e1->get_length();
+      Rstats::Elements* e2;
+      if (e1->is_character_type()) {
+        croak("Error in a - b : non-numeric argument to binary operator");
+      }
+      else if (e1->is_complex_type()) {
+        e2 = Rstats::Elements::new_complex(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_complex_value(i, std::tan(e1->get_complex_value(i)));
+        }
+      }
+      else if (e1->is_double_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::tan(e1->get_double_value(i)));
+        }
+      }
+      else if (e1->is_integer_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::tan(e1->get_integer_value(i)));
+        }
+      }
+      else if (e1->is_logical_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::tan(e1->get_integer_value(i)));
+        }
+      }
+      else {
+        croak("Invalid type");
+      }
+      
+      e2->merge_na_positions(e1);
+      
+      return e2;
+    }
+
+    Rstats::Elements* sinh(Rstats::Elements* e1) {
+      
+      I32 length = e1->get_length();
+      Rstats::Elements* e2;
+      if (e1->is_character_type()) {
+        croak("Error in a - b : non-numeric argument to binary operator");
+      }
+      else if (e1->is_complex_type()) {
+        e2 = Rstats::Elements::new_complex(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_complex_value(i, std::sinh(e1->get_complex_value(i)));
+        }
+      }
+      else if (e1->is_double_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::sinh(e1->get_double_value(i)));
+        }
+      }
+      else if (e1->is_integer_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::sinh(e1->get_integer_value(i)));
+        }
+      }
+      else if (e1->is_logical_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::sinh(e1->get_integer_value(i)));
+        }
+      }
+      else {
+        croak("Invalid type");
+      }
+      
+      e2->merge_na_positions(e1);
+      
+      return e2;
+    }
+    
+    Rstats::Elements* cosh(Rstats::Elements* e1) {
+      
+      I32 length = e1->get_length();
+      Rstats::Elements* e2;
+      if (e1->is_character_type()) {
+        croak("Error in a - b : non-numeric argument to binary operator");
+      }
+      else if (e1->is_complex_type()) {
+        e2 = Rstats::Elements::new_complex(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_complex_value(i, std::cosh(e1->get_complex_value(i)));
+        }
+      }
+      else if (e1->is_double_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::cosh(e1->get_double_value(i)));
+        }
+      }
+      else if (e1->is_integer_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::cosh(e1->get_integer_value(i)));
+        }
+      }
+      else if (e1->is_logical_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::cosh(e1->get_integer_value(i)));
+        }
+      }
+      else {
+        croak("Invalid type");
+      }
+      
+      e2->merge_na_positions(e1);
+      
+      return e2;
+    }
+
+    Rstats::Elements* tanh(Rstats::Elements* e1) {
+      
+      I32 length = e1->get_length();
+      Rstats::Elements* e2;
+      if (e1->is_character_type()) {
+        croak("Error in a - b : non-numeric argument to binary operator");
+      }
+      else if (e1->is_complex_type()) {
+        e2 = Rstats::Elements::new_complex(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_complex_value(i, std::tanh(e1->get_complex_value(i)));
+        }
+      }
+      else if (e1->is_double_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::tanh(e1->get_double_value(i)));
+        }
+      }
+      else if (e1->is_integer_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::tanh(e1->get_integer_value(i)));
+        }
+      }
+      else if (e1->is_logical_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::tanh(e1->get_integer_value(i)));
+        }
+      }
+      else {
+        croak("Invalid type");
+      }
+      
+      e2->merge_na_positions(e1);
+      
+      return e2;
+    }
+
+    Rstats::Elements* abs(Rstats::Elements* e1) {
+      
+      I32 length = e1->get_length();
+      Rstats::Elements* e2;
+      if (e1->is_character_type()) {
+        croak("Error in a - b : non-numeric argument to binary operator");
+      }
+      else if (e1->is_complex_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::abs(e1->get_complex_value(i)));
+        }
+      }
+      else if (e1->is_double_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::abs(e1->get_double_value(i)));
+        }
+      }
+      else if (e1->is_integer_type()) {
+        e2 = Rstats::Elements::new_integer(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_integer_value(i, std::abs(e1->get_integer_value(i)));
+        }
+      }
+      else if (e1->is_logical_type()) {
+        e2 = Rstats::Elements::new_integer(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_integer_value(i, std::abs(e1->get_integer_value(i)));
+        }
+      }
+      else {
+        croak("Invalid type");
+      }
+      
+      e2->merge_na_positions(e1);
+      
+      return e2;
+    }
+    
+    Rstats::Elements* log(Rstats::Elements* e1) {
+      
+      I32 length = e1->get_length();
+      Rstats::Elements* e2;
+      if (e1->is_character_type()) {
+        croak("Error in a - b : non-numeric argument to binary operator");
+      }
+      else if (e1->is_complex_type()) {
+        e2 = Rstats::Elements::new_complex(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_complex_value(i, std::log(e1->get_complex_value(i)));
+        }
+      }
+      else if (e1->is_double_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::log(e1->get_double_value(i)));
+        }
+      }
+      else if (e1->is_integer_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::log(e1->get_integer_value(i)));
+        }
+      }
+      else if (e1->is_logical_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::log(e1->get_integer_value(i)));
+        }
+      }
+      else {
+        croak("Invalid type");
+      }
+      
+      e2->merge_na_positions(e1);
+      
+      return e2;
+    }
+
+    Rstats::Elements* logb(Rstats::Elements* e1) {
+      return log(e1);
+    }
+    
+    Rstats::Elements* log10(Rstats::Elements* e1) {
+      
+      I32 length = e1->get_length();
+      Rstats::Elements* e2;
+      if (e1->is_character_type()) {
+        croak("Error in a - b : non-numeric argument to binary operator");
+      }
+      else if (e1->is_complex_type()) {
+        e2 = Rstats::Elements::new_complex(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_complex_value(i, std::log10(e1->get_complex_value(i)));
+        }
+      }
+      else if (e1->is_double_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::log10(e1->get_double_value(i)));
+        }
+      }
+      else if (e1->is_integer_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::log10(e1->get_integer_value(i)));
+        }
+      }
+      else if (e1->is_logical_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::log10(e1->get_integer_value(i)));
+        }
+      }
+      else {
+        croak("Invalid type");
+      }
+      
+      e2->merge_na_positions(e1);
+      
+      return e2;
+    }
+
+    Rstats::Elements* log2(Rstats::Elements* e1) {
+      
+      I32 length = e1->get_length();
+      Rstats::Elements* e2;
+      if (e1->is_character_type()) {
+        croak("Error in a - b : non-numeric argument to binary operator");
+      }
+      else if (e1->is_complex_type()) {
+        e2 = divide(log(e1), log(Rstats::Elements::new_complex(length, std::complex<double>(2, 0))));
+      }
+      else if (e1->is_double_type() || e1->is_integer_type() || e1->is_logical_type()) {
+        e2 = divide(log(e1), log(Rstats::Elements::new_double(length, 2)));
+      }
+      else {
+        croak("Invalid type");
+      }
+      
+      e2->merge_na_positions(e1);
+      
+      return e2;
+    }
+
+    Rstats::Elements* exp(Rstats::Elements* e1) {
+      
+      I32 length = e1->get_length();
+      Rstats::Elements* e2;
+      if (e1->is_character_type()) {
+        croak("Error in a - b : non-numeric argument to binary operator");
+      }
+      else if (e1->is_complex_type()) {
+        e2 = Rstats::Elements::new_complex(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_complex_value(i, std::exp(e1->get_complex_value(i)));
+        }
+      }
+      else if (e1->is_double_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::exp(e1->get_double_value(i)));
+        }
+      }
+      else if (e1->is_integer_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::exp(e1->get_integer_value(i)));
+        }
+      }
+      else if (e1->is_logical_type()) {
+        e2 = Rstats::Elements::new_double(length);
+        for (I32 i = 0; i < length; i++) {
+          e2->set_double_value(i, std::exp(e1->get_integer_value(i)));
+        }
+      }
+      else {
+        croak("Invalid type");
+      }
+      
+      e2->merge_na_positions(e1);
+      
+      return e2;
+    }
+    
     Rstats::Elements* is_infinite(Rstats::Elements* elements) {
       
       I32 length = elements->get_length();

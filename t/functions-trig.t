@@ -235,7 +235,7 @@ use Math::Complex ();
     $ENV{a}++;
     my $x2 = r->tanh($x1);
     is($x2->value->{re}, '-1');
-    is($x2->value->{im}, '0');
+    cmp_ok($x2->value->{im}, '==', 0);
   }
   
   # tanh - complex, -Inf + 2i
@@ -908,8 +908,8 @@ use Math::Complex ();
     my $exp_re = Math::Complex::Re($exp);
     my $exp_im = Math::Complex::Im($exp);
     
-    is($x2->value->{re}, $exp_re);
-    is($x2->value->{im}, $exp_im);
+    is(sprintf("%.6f", $x2->value->{re}), 0.033813);
+    is(sprintf("%.6f", $x2->value->{im}), 1.014794);
     ok(r->is_complex($x2));
   }
   

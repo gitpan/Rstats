@@ -1438,20 +1438,8 @@ sub equal { operation('equal', @_)}
 
 sub not_equal { operation('not_equal', @_)}
 
-sub abs {
-  my $x1 = to_c(shift);
-  
-  my @a2_elements = map { Rstats::ElementsFunc::abs($_) } @{$x1->decompose_elements};
-  
-  my $x2 = c(\@a2_elements);
-  $x1->_copy_attrs_to($x2);
-  $x2->mode('double');
-  
-  return $x2;
-}
-
+sub abs { process(\&Rstats::ElementsFunc::abs, @_) }
 sub acos { process(\&Rstats::ElementsFunc::acos, @_) }
-
 sub acosh { process(\&Rstats::ElementsFunc::acosh, @_) }
 
 sub append {
@@ -1510,11 +1498,8 @@ sub array {
 }
 
 sub asin { process(\&Rstats::ElementsFunc::asin, @_) }
-
 sub asinh { process(\&Rstats::ElementsFunc::asinh, @_) }
-
 sub atan { process(\&Rstats::ElementsFunc::atan, @_) }
-
 sub atanh { process(\&Rstats::ElementsFunc::atanh, @_) }
 
 sub cbind {
@@ -1632,7 +1617,7 @@ sub colSums {
   }
 }
 
-sub cos { process(\&Rstats::ElementsFunc::cos, @_) }
+sub cos { process_unary(\&Rstats::ElementsFunc::cos, @_) }
 
 sub atan2 {
   my ($x1, $x2) = (to_c(shift), to_c(shift));
@@ -1663,7 +1648,7 @@ sub atan2 {
   return $x3;
 }
 
-sub cosh { process(\&Rstats::ElementsFunc::cosh, @_) }
+sub cosh { process_unary(\&Rstats::ElementsFunc::cosh, @_) }
 
 sub cummax {
   my $x1 = to_c(shift);
@@ -1814,7 +1799,7 @@ sub complex {
   return c($x2_elements);
 }
 
-sub exp { process(\&Rstats::ElementsFunc::exp, @_) }
+sub exp { process_unary(\&Rstats::ElementsFunc::exp, @_) }
 
 sub expm1 { process(\&Rstats::ElementsFunc::expm1, @_) }
 
@@ -1917,13 +1902,10 @@ sub ifelse {
   return array(\@x2_values);
 }
 
-sub log { process(\&Rstats::ElementsFunc::log, @_) }
-
-sub logb { Rstats::Func::log(@_) }
-
-sub log2 { process(\&Rstats::ElementsFunc::log2, @_) }
-
-sub log10 { process(\&Rstats::ElementsFunc::log10, @_) }
+sub log { process_unary(\&Rstats::ElementsFunc::log, @_) }
+sub logb { process_unary(\&Rstats::ElementsFunc::logb, @_) }
+sub log2 { process_unary(\&Rstats::ElementsFunc::log2, @_) }
+sub log10 { process_unary(\&Rstats::ElementsFunc::log10, @_) }
 
 sub max {
   my $x1 = c(@_);
@@ -2397,9 +2379,7 @@ sub sequence {
   return c(\@x2_values);
 }
 
-sub sin { process(\&Rstats::ElementsFunc::sin, @_) }
-
-sub sinh { process(\&Rstats::ElementsFunc::sinh, @_) }
+sub sinh { process_unary(\&Rstats::ElementsFunc::sinh, @_) }
 
 sub sqrt {
   my $x1 = to_c(shift);
@@ -2451,7 +2431,7 @@ sub tail {
   return $x2;
 }
 
-sub tan { process(\&Rstats::ElementsFunc::tan, @_) }
+sub tan { process_unary(\&Rstats::ElementsFunc::tan, @_) }
 
 sub process {
   my $func = shift;
@@ -2465,7 +2445,22 @@ sub process {
   return $x2;
 }
 
-sub tanh { process(\&Rstats::ElementsFunc::tanh, @_) }
+sub sin { process_unary(\&Rstats::ElementsFunc::sin, @_) }
+
+sub process_unary {
+  my $func = shift;
+  my $x1 = to_c(shift);
+  
+  my $x2_elements = $func->($x1->elements);
+  my $x2 = NULL;
+  $x2->elements($x2_elements);
+  $x1->_copy_attrs_to($x2);
+  $x2->mode(max_type($x1, $x2));
+  
+  return $x2;
+}
+
+sub tanh { process_unary(\&Rstats::ElementsFunc::tanh, @_) }
 
 sub trunc {
   my ($_x1) = @_;
