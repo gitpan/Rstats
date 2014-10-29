@@ -1,6 +1,6 @@
 namespace Rstats {
-  // Rstats::Perl
-  namespace Perl {
+  // Rstats::PerlAPI
+  namespace PerlAPI {
     
     SV* new_ref(SV* sv) {
       return sv_2mortal(newRV_inc(sv));
@@ -12,22 +12,6 @@ namespace Rstats {
 
     SV* new_ref(HV* hv) {
       return sv_2mortal(newRV_inc((SV*)hv));
-    }
-    
-    IV get_iv (SV* sv) {
-      return SvIV(sv);
-    }
-    
-    UV get_uv(SV* sv) {
-      return SvUV(sv);
-    }
-
-    NV get_nv(SV* sv) {
-      return SvNV(sv);
-    }
-      
-    char* get_pv(SV* sv) {
-      return SvPV_nolen(sv);
     }
 
     SV* new_sv(SV* sv) {
@@ -133,7 +117,7 @@ namespace Rstats {
     }
 
     SV* fetch_hv(HV* hv, SV* key_sv) {
-      return fetch_hv(hv, get_pv(key_sv));
+      return fetch_hv(hv, SvPV_nolen(key_sv));
     }
     
     SV* fetch_hv(SV* hv_ref, const char* key) {
@@ -145,24 +129,16 @@ namespace Rstats {
     }
 
     SV* fetch_hv(SV* hv_ref, SV* key_sv) {
-      return fetch_hv(hv_ref, get_pv(key_sv));
-    }
-    
-    SV* refcnt_inc_sv(SV* sv) {
-      return SvREFCNT_inc(sv);
-    }
-
-    void refcnt_dec_sv(SV* sv) {
-      return SvREFCNT_dec(sv);
+      return fetch_hv(hv_ref, SvPV_nolen(key_sv));
     }
     
     void store_av(AV* av, IV pos, SV* element) {
-      av_store(av, pos, refcnt_inc_sv(element));
+      av_store(av, pos, SvREFCNT_inc(element));
     }
     
     void store_av(SV* av_ref, IV pos, SV* element) {
       AV* av = deref_av(av_ref);
-      av_store(av, pos, refcnt_inc_sv(element));
+      av_store(av, pos, SvREFCNT_inc(element));
     }
 
     SV* copy_av(SV* av_ref_sv) {
@@ -176,30 +152,30 @@ namespace Rstats {
     }
     
     void store_hv(HV* hv, const char* key, SV* element) {
-      hv_store(hv, key, strlen(key), refcnt_inc_sv(element), FALSE);
+      hv_store(hv, key, strlen(key), SvREFCNT_inc(element), FALSE);
     }
 
     void store_hv(SV* hv_ref, const char* key, SV* element) {
       HV* hv = deref_hv(hv_ref);
-      hv_store(hv, key, strlen(key), refcnt_inc_sv(element), FALSE);
+      hv_store(hv, key, strlen(key), SvREFCNT_inc(element), FALSE);
     }
     
     void push_av(AV* av, SV* sv) {
-      av_push(av, refcnt_inc_sv(sv));
+      av_push(av, SvREFCNT_inc(sv));
     }
     
     void push_av(SV* av_ref, SV* sv) {
-      av_push(deref_av(av_ref), refcnt_inc_sv(sv));
+      av_push(deref_av(av_ref), SvREFCNT_inc(sv));
     }
 
     void unshit_av(AV* av, SV* sv) {
       av_unshift(av, 1);
-      store_av(av, (IV)0, sv);
+      store_av(av, (IV)0, SvREFCNT_inc(sv));
     }
     
     void unshit_av(SV* av_ref, SV* sv) {
       av_unshift(deref_av(av_ref), 1);
-      store_av(deref_av(av_ref), 0, sv);
+      store_av(deref_av(av_ref), 0, SvREFCNT_inc(sv));
     }
 
     template <class X> X to_c_obj(SV* perl_obj_ref) {
@@ -274,7 +250,7 @@ namespace Rstats {
         Rstats::Values::Character* values = this->get_character_values();
         for (IV i = 0; i < length; i++) {
           if ((*values)[i] != NULL) {
-            Rstats::Perl::refcnt_dec_sv((*values)[i]);
+            SvREFCNT_dec((*values)[i]);
           }
         }
         delete values;
@@ -366,18 +342,17 @@ namespace Rstats {
         return NULL;
       }
       else {
-        return Rstats::Perl::new_sv(value);
+        return Rstats::PerlAPI::new_sv(value);
       }
     }
     
     void set_character_value(IV pos, SV* value) {
       if (value != NULL) {
-        Rstats::Perl::refcnt_dec_sv((*this->get_character_values())[pos]);
+        SvREFCNT_dec((*this->get_character_values())[pos]);
       }
       
-      SV* new_value = Rstats::Perl::new_sv(value);
-      (*this->get_character_values())[pos]
-        = Rstats::Perl::refcnt_inc_sv(new_value);
+      SV* new_value = Rstats::PerlAPI::new_sv(value);
+      (*this->get_character_values())[pos] = SvREFCNT_inc(new_value);
     }
 
     static Rstats::Elements* new_complex(IV length) {
@@ -505,6 +480,146 @@ namespace Rstats {
       Rstats::Elements* elements = new Rstats::Elements;
       elements->values = NULL;
       return elements;
+    }
+
+    Rstats::Elements* as_double() {
+
+      IV length = this->get_length();
+      Rstats::Elements* e2 = new_double(length);
+      if (this->is_character_type()) {
+        for (IV i = 0; i < length; i++) {
+          SV* value_sv = this->get_character_value(i);
+          if (looks_like_number(value_sv)) {
+            NV value = SvNV(value_sv);
+            e2->set_double_value(i, value);
+          }
+          else {
+            warn("NAs introduced by coercion");
+            e2->add_na_position(i);
+          }
+        }
+      }
+      else if (this->is_complex_type()) {
+        warn("imaginary parts discarded in coercion");
+        for (IV i = 0; i < length; i++) {
+          e2->set_double_value(i, this->get_complex_value(i).real());
+        }
+      }
+      else if (this->is_double_type()) {
+        for (IV i = 0; i < length; i++) {
+          e2->set_double_value(i, this->get_double_value(i));
+        }
+      }
+      else if (this->is_integer_type() || this->is_logical_type()) {
+        for (IV i = 0; i < length; i++) {
+          e2->set_double_value(i, this->get_integer_value(i));
+        }
+      }
+      else {
+        croak("unexpected type");
+      }
+
+      e2->merge_na_positions(this);
+      
+      return e2;
+    }
+
+    Rstats::Elements* as_integer() {
+
+      IV length = this->get_length();
+      Rstats::Elements* e2 = new_integer(length);
+      if (this->is_character_type()) {
+        for (IV i = 0; i < length; i++) {
+          SV* value_sv = this->get_character_value(i);
+          if (looks_like_number(value_sv)) {
+            IV value = SvIV(value_sv);
+            e2->set_integer_value(i, value);
+          }
+          else {
+            warn("NAs introduced by coercion");
+            e2->add_na_position(i);
+          }
+        }
+      }
+      else if (this->is_complex_type()) {
+        warn("imaginary parts discarded in coercion");
+        for (IV i = 0; i < length; i++) {
+          e2->set_integer_value(i, (IV)this->get_complex_value(i).real());
+        }
+      }
+      else if (this->is_double_type()) {
+        NV value;
+        for (IV i = 0; i < length; i++) {
+          value = this->get_double_value(i);
+          if (std::isnan(value) || std::isinf(value)) {
+            e2->add_na_position(i);
+          }
+          else {
+            e2->set_integer_value(i, (IV)value);
+          }
+        }
+      }
+      else if (this->is_integer_type() || this->is_logical_type()) {
+        for (IV i = 0; i < length; i++) {
+          e2->set_integer_value(i, this->get_integer_value(i));
+        }
+      }
+      else {
+        croak("unexpected type");
+      }
+
+      e2->merge_na_positions(this);
+      
+      return e2;
+    }
+
+    Rstats::Elements* as_logical() {
+
+      IV length = this->get_length();
+      Rstats::Elements* e2 = new_logical(length);
+      if (this->is_character_type()) {
+        for (IV i = 0; i < length; i++) {
+          SV* value_sv = this->get_character_value(i);
+          if (looks_like_number(value_sv)) {
+            IV value = SvIV(value_sv);
+            e2->set_integer_value(i, value);
+          }
+          else {
+            warn("NAs introduced by coercion");
+            e2->add_na_position(i);
+          }
+        }
+      }
+      else if (this->is_complex_type()) {
+        warn("imaginary parts discarded in coercion");
+        for (IV i = 0; i < length; i++) {
+          e2->set_integer_value(i, (IV)this->get_complex_value(i).real());
+        }
+      }
+      else if (this->is_double_type()) {
+        NV value;
+        for (IV i = 0; i < length; i++) {
+          value = this->get_double_value(i);
+          if (std::isnan(value) || std::isinf(value)) {
+            e2->add_na_position(i);
+          }
+          else {
+            e2->set_integer_value(i, (IV)value);
+          }
+        }
+      }
+      else if (this->is_integer_type() || this->is_logical_type()) {
+        for (IV i = 0; i < length; i++) {
+          e2->set_integer_value(i, this->get_integer_value(i));
+        }
+      }
+      else {
+        croak("unexpected type");
+      }
+
+      e2->merge_na_positions(this);
+      
+      return e2;
     }
   };
   
@@ -1005,8 +1120,18 @@ namespace Rstats {
       }
       else if (e1->is_complex_type()) {
         e2 = Rstats::Elements::new_complex(length);
+        NV e1_value_re;
         for (IV i = 0; i < length; i++) {
-          e2->set_complex_value(i, std::tanh(e1->get_complex_value(i)));
+          e1_value_re = e1->get_complex_value(i).real();
+          
+          // For fix FreeBSD bug
+          // FreeBAD return (NaN + NaNi) when real value is negative infinite
+          if (std::isinf(e1_value_re) && e1_value_re < 0) {
+            e2->set_complex_value(i, std::complex<double>(-1, 0));
+          }
+          else {
+            e2->set_complex_value(i, std::tanh(e1->get_complex_value(i)));
+          }
         }
       }
       else if (e1->is_double_type()) {
@@ -1221,7 +1346,89 @@ namespace Rstats {
       
       return e2;
     }
-    
+
+    Rstats::Elements* equal(Rstats::Elements* e1, Rstats::Elements* e2) {
+      
+      if (e1->get_type() != e2->get_type()) {
+        std::cerr << e1->get_type() << " " << e2->get_type();
+        croak("Can't compare equal different type(Rstats::ElementFunc::equal())");
+      }
+      
+      if (e1->get_length() != e2->get_length()) {
+        croak("Can't compare equal different length(Rstats::ElementFunc::equal())");
+      }
+      
+      IV length = e1->get_length();
+      Rstats::Elements* e3 = Rstats::Elements::new_logical(length);
+      if (e1->is_character_type()) {
+        IV is;
+        for (IV i = 0; i < length; i++) {
+          if (sv_cmp(e1->get_character_value(i), e2->get_character_value(i)) == 0) {
+            is = 1;
+          }
+          else {
+            is = 0;
+          }
+          e3->set_integer_value(i, is);
+        }
+      }
+      else if (e1->is_complex_type()) {
+        IV is;
+        for (IV i = 0; i < length; i++) {
+          if (e1->get_complex_value(i) == e2->get_complex_value(i)) {
+            is = 1;
+          }
+          else {
+            is = 0;
+          }
+          e3->set_integer_value(i, is);
+        }
+      }
+      else if (e1->is_double_type()) {
+        IV is;
+        NV e1_value;
+        NV e2_value;
+        for (IV i = 0; i < length; i++) {
+          e1_value = e1->get_double_value(i);
+          e2_value = e2->get_double_value(i);
+          
+          if (std::isnan(e1_value) || std::isnan(e2_value)) {
+            e3->add_na_position(i);
+            is = 0;
+          }
+          else {
+            if(e1_value == e2_value) {
+              is = 1;
+            }
+            else {
+              is = 0;
+            }
+          }
+          e3->set_integer_value(i, is);
+        }
+      }
+      else if (e1->is_integer_type() || e1->is_logical_type()) {
+        IV is;
+        for (IV i = 0; i < length; i++) {
+          if (e1->get_integer_value(i) == e2->get_integer_value(i)) {
+            is = 1;
+          }
+          else {
+            is = 0;
+          }
+          e3->set_integer_value(i, is);
+        }
+      }
+      else {
+        croak("Invalid type");
+      }
+      
+      e3->merge_na_positions(e1);
+      e3->merge_na_positions(e2);
+      
+      return e3;
+    }
+
     Rstats::Elements* is_infinite(Rstats::Elements* elements) {
       
       IV length = elements->get_length();
