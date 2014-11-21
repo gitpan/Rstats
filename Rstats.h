@@ -2,6 +2,24 @@ namespace Rstats {
   // Rstats::PerlAPI
   namespace PerlAPI {
     
+    REGEXP* new_pregcomp (SV* sv_re, IV flag) {
+      return (REGEXP*)sv_2mortal((SV*)pregcomp(sv_re, flag));
+    }
+    
+    IV pregexec_simple (SV* sv_str, REGEXP* sv_re) {
+      char* str = SvPV_nolen(sv_str);
+      
+      return pregexec(
+        sv_re,
+        str,
+        str + strlen(str),
+        str,
+        0,
+        sv_str,
+        0
+      );
+    }
+    
     SV* new_ref(SV* sv) {
       return sv_2mortal(newRV_inc(sv));
     }
@@ -19,7 +37,7 @@ namespace Rstats {
     }
 
     SV* new_sv(const char* pv) {
-      return sv_2mortal(newSVpvn(pv, strlen(pv)));
+      return sv_2mortal(newSVpv(pv, 0));
     }
     
     SV* new_sv_iv(IV iv) {
@@ -116,8 +134,8 @@ namespace Rstats {
       return element;
     }
 
-    SV* fetch_hv(HV* hv, SV* key_sv) {
-      return fetch_hv(hv, SvPV_nolen(key_sv));
+    SV* fetch_hv(HV* hv, SV* sv_key) {
+      return fetch_hv(hv, SvPV_nolen(sv_key));
     }
     
     SV* fetch_hv(SV* hv_ref, const char* key) {
@@ -128,8 +146,8 @@ namespace Rstats {
       return element;
     }
 
-    SV* fetch_hv(SV* hv_ref, SV* key_sv) {
-      return fetch_hv(hv_ref, SvPV_nolen(key_sv));
+    SV* fetch_hv(SV* hv_ref, SV* sv_key) {
+      return fetch_hv(hv_ref, SvPV_nolen(sv_key));
     }
     
     void store_av(AV* av, IV pos, SV* element) {
@@ -141,14 +159,14 @@ namespace Rstats {
       av_store(av, pos, SvREFCNT_inc(element));
     }
 
-    SV* copy_av(SV* av_ref_sv) {
-      SV* new_av_ref_sv = new_av_ref();
+    SV* copy_av(SV* sv_av_ref) {
+      SV* sv_new_av_ref = new_av_ref();
       
-      for (IV i = 0; i < length_av(av_ref_sv); i++) {
-        store_av(new_av_ref_sv, i, new_sv(fetch_av(av_ref_sv, i)));
+      for (IV i = 0; i < length_av(sv_av_ref); i++) {
+        store_av(sv_new_av_ref, i, new_sv(fetch_av(sv_av_ref, i)));
       }
       
-      return new_av_ref_sv;
+      return sv_new_av_ref;
     }
     
     void store_hv(HV* hv, const char* key, SV* element) {
@@ -188,9 +206,9 @@ namespace Rstats {
 
     template <class X> SV* to_perl_obj(X c_obj, const char* class_name) {
       IV obj_addr = PTR2IV(c_obj);
-      SV* obj_addr_sv = new_sv_iv(obj_addr);
-      SV* obj_addr_sv_ref = new_ref(obj_addr_sv);
-      SV* perl_obj = sv_bless(obj_addr_sv_ref, gv_stashpv(class_name, 1));
+      SV* sv_obj_addr = new_sv_iv(obj_addr);
+      SV* sv_obj_addr_ref = new_ref(sv_obj_addr);
+      SV* perl_obj = sv_bless(sv_obj_addr_ref, gv_stashpv(class_name, 1));
       
       return perl_obj;
     }
@@ -316,11 +334,11 @@ namespace Rstats {
       }
     }
 
-    static Rstats::Elements* new_character(IV length, SV* str_sv) {
+    static Rstats::Elements* new_character(IV length, SV* sv_str) {
 
       Rstats::Elements* elements = Rstats::Elements::new_character(length);
       for (IV i = 0; i < length; i++) {
-        elements->set_character_value(i, str_sv);
+        elements->set_character_value(i, sv_str);
       }
       elements->type = Rstats::ElementsType::CHARACTER;
       
@@ -488,9 +506,9 @@ namespace Rstats {
       Rstats::Elements* e2 = new_double(length);
       if (this->is_character_type()) {
         for (IV i = 0; i < length; i++) {
-          SV* value_sv = this->get_character_value(i);
-          if (looks_like_number(value_sv)) {
-            NV value = SvNV(value_sv);
+          SV* sv_value = this->get_character_value(i);
+          if (looks_like_number(sv_value)) {
+            NV value = SvNV(sv_value);
             e2->set_double_value(i, value);
           }
           else {
@@ -530,9 +548,9 @@ namespace Rstats {
       Rstats::Elements* e2 = new_integer(length);
       if (this->is_character_type()) {
         for (IV i = 0; i < length; i++) {
-          SV* value_sv = this->get_character_value(i);
-          if (looks_like_number(value_sv)) {
-            IV value = SvIV(value_sv);
+          SV* sv_value = this->get_character_value(i);
+          if (looks_like_number(sv_value)) {
+            IV value = SvIV(sv_value);
             e2->set_integer_value(i, value);
           }
           else {
@@ -579,9 +597,9 @@ namespace Rstats {
       Rstats::Elements* e2 = new_logical(length);
       if (this->is_character_type()) {
         for (IV i = 0; i < length; i++) {
-          SV* value_sv = this->get_character_value(i);
-          if (looks_like_number(value_sv)) {
-            IV value = SvIV(value_sv);
+          SV* sv_value = this->get_character_value(i);
+          if (looks_like_number(sv_value)) {
+            IV value = SvIV(sv_value);
             e2->set_integer_value(i, value);
           }
           else {
