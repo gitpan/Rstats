@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Rstats;
-use Rstats::ElementsFunc;
+use Rstats::VectorFunc;
 use Math::Trig ();
 use Math::Complex ();
 
@@ -22,8 +22,8 @@ use Math::Complex ();
   {
     my $x1 = c(1 + 0*i);
     my $x2 = r->atanh($x1);
-    ok($x2->element->re->is_positive_infinite);
-    ok($x2->element->im->is_nan);
+    is($x2->value->{re}, 'Inf');
+    is($x2->value->{im}, 'NaN');
     ok(r->is_complex($x2));
   }
 
@@ -31,8 +31,8 @@ use Math::Complex ();
   {
     my $x1 = c(-1 + 0*i);
     my $x2 = r->atanh($x1);
-    ok($x2->element->re->is_negative_infinite);
-    ok($x2->element->im->is_nan);
+    is($x2->value->{re}, '-Inf');
+    is($x2->value->{im}, 'NaN');
     ok(r->is_complex($x2));
   }
         
@@ -55,28 +55,28 @@ use Math::Complex ();
   {
     my $x1 = c(Inf);
     my $x2 = r->atanh($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
   
   # atanh - -Inf
   {
     my $x1 = c(-Inf);
     my $x2 = r->atanh($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 
   # atanh - NA
   {
     my $x1 = c(NA);
     my $x2 = r->atanh($x1);
-    ok($x2->element->is_na);
+    ok(!defined $x2->value);
   }
 
   # atanh - NaN
   {
     my $x1 = c(NaN);
     my $x2 = r->atanh($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }
 
@@ -143,28 +143,28 @@ use Math::Complex ();
   {
     my $x1 = c(Inf);
     my $x2 = r->acosh($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
   
   # acosh - -Inf
   {
     my $x1 = c(-Inf);
     my $x2 = r->acosh($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 
   # acosh - NA
   {
     my $x1 = c(NA);
     my $x2 = r->acosh($x1);
-    ok($x2->element->is_na);
+    ok(!defined $x2->value);
   }
 
   # acosh - NaN
   {
     my $x1 = c(NaN);
     my $x2 = r->acosh($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }
 
@@ -207,14 +207,14 @@ use Math::Complex ();
   {
     my $x1 = c(NA);
     my $x2 = r->asinh($x1);
-    ok($x2->element->is_na);
+    ok(!defined $x2->value);
   }
 
   # asinh - NaN
   {
     my $x1 = c(NaN);
     my $x2 = r->asinh($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }
 
@@ -233,8 +233,8 @@ use Math::Complex ();
   {
     my $x1 = r->complex({re => 1, im => Inf});
     my $x2 = r->tanh($x1);
-    ok($x2->element->re->is_nan);
-    ok($x2->element->im->is_nan);
+    is($x2->value->{re}, 'NaN');
+    is($x2->value->{im}, 'NaN');
   }
 
   # tanh - complex, -Inf - 2i
@@ -281,14 +281,14 @@ use Math::Complex ();
   {
     my $x1 = c(NA);
     my $x2 = r->tanh($x1);
-    ok($x2->element->is_na);
+    ok(!defined $x2->value);
   }  
 
   # tanh - NaN
   {
     my $x1 = c(NaN);
     my $x2 = r->tanh($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }
 
@@ -307,16 +307,16 @@ use Math::Complex ();
   {
     my $x1 = c(-Inf - 2*i);
     my $x2 = r->cosh($x1);
-    ok($x2->element->re->is_negative_infinite);
-    ok($x2->element->im->is_positive_infinite);
+    is($x2->value->{re}, '-Inf');
+    is($x2->value->{im}, 'Inf');
   }
   
   # cosh - complex, -Inf + 2i
   {
     my $x1 = c(-Inf + 2*i);
     my $x2 = r->cosh($x1);
-    ok($x2->element->re->is_negative_infinite);
-    ok($x2->element->im->is_negative_infinite);
+    is($x2->value->{re}, '-Inf');
+    ok($x2->value->{im}, '-Inf');
   }
   
   # cosh - double,array
@@ -349,14 +349,14 @@ use Math::Complex ();
   {
     my $x1 = c(NA);
     my $x2 = r->cosh($x1);
-    ok($x2->element->is_na);
+    ok(!defined $x2->value);
   }  
 
   # cosh - NaN
   {
     my $x1 = c(NaN);
     my $x2 = r->cosh($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }
 
@@ -375,16 +375,16 @@ use Math::Complex ();
   {
     my $x1 = c(-Inf - 2*i);
     my $x2 = r->sinh($x1);
-    ok($x2->element->re->is_positive_infinite);
-    ok($x2->element->im->is_negative_infinite);
+    is($x2->value->{re}, 'Inf');
+    is($x2->value->{im}, '-Inf');
   }
   
   # sinh - complex, -Inf + 2i
   {
     my $x1 = c(-Inf + 2*i);
     my $x2 = r->sinh($x1);
-    ok($x2->element->re->is_positive_infinite);
-    ok($x2->element->im->is_positive_infinite);
+    is($x2->value->{re}, 'Inf');
+    is($x2->value->{im}, 'Inf');
   }
   
   # sinh - double,array
@@ -417,14 +417,14 @@ use Math::Complex ();
   {
     my $x1 = c(NA);
     my $x2 = r->sinh($x1);
-    ok($x2->element->is_na);
+    ok(!defined $x2->value);
   }  
 
   # sinh - NaN
   {
     my $x1 = c(NaN);
     my $x2 = r->sinh($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }
 
@@ -444,7 +444,7 @@ use Math::Complex ();
     my $x1 = c(1*i);
     my $x2 = r->atan($x1);
     is($x2->values->[0]{re}, 0);
-    ok($x2->decompose_elements->[0]->im->is_positive_infinite);
+    is($x2->decompose_elements->[0]->value->{im}, 'Inf');
     ok(r->is_complex($x2));
   }
   
@@ -453,7 +453,7 @@ use Math::Complex ();
     my $x1 = c(-1*i);
     my $x2 = r->atan($x1);
     is($x2->values->[0]{re}, 0);
-    ok($x2->decompose_elements->[0]->im->is_negative_infinite);
+    is($x2->decompose_elements->[0]->value->{im}, '-Inf');
     ok(r->is_complex($x2));
   }
 
@@ -493,14 +493,14 @@ use Math::Complex ();
   {
     my $x1 = c(NA);
     my $x2 = r->atan($x1);
-    ok($x2->element->is_na);
+    ok(!defined $x2->value);
   }  
 
   # atan - NaN
   {
     my $x1 = c(NaN);
     my $x2 = r->atan($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }
 
@@ -597,28 +597,28 @@ use Math::Complex ();
   {
     my $x1 = c(Inf);
     my $x2 = r->acos($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
   
   # acos - -Inf
   {
     my $x1 = c(-Inf);
     my $x2 = r->acos($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 
   # acos - NA
   {
     my $x1 = c(NA);
     my $x2 = r->acos($x1);
-    ok($x2->element->is_na);
+    ok(!defined $x2->value);
   }  
 
   # acos - NaN
   {
     my $x1 = c(NaN);
     my $x2 = r->acos($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }
 
@@ -705,28 +705,28 @@ use Math::Complex ();
   {
     my $x1 = c(Inf);
     my $x2 = r->asin($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
   
   # asin - -Inf
   {
     my $x1 = c(-Inf);
     my $x2 = r->asin($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 
   # asin - NA
   {
     my $x1 = c(NA);
     my $x2 = r->asin($x1);
-    ok($x2->element->is_na);
+    ok(!defined $x2->value);
   }  
 
   # asin - NaN
   {
     my $x1 = c(NaN);
     my $x2 = r->asin($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }
 
@@ -773,14 +773,14 @@ use Math::Complex ();
   {
     my $x1 = c(NA);
     my $x2 = r->atan($x1);
-    ok($x2->element->is_na);
+    ok(!defined $x2->value);
   }  
 
   # atan - NaN
   {
     my $x1 = c(NaN);
     my $x2 = r->atan($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }
 
@@ -883,25 +883,25 @@ use Math::Complex ();
   # atan2 - y is NA
   {
     my $x1 = r->atan2(NA, 0);
-    ok($x1->element->is_na);
+    ok(!defined $x1->value);
   }  
 
   # atan2 - x is NA
   {
     my $x1 = r->atan2(0, NA);
-    ok($x1->element->is_na);
+    ok(!defined $x1->value);
   }
 
   # atan2 - y is NaN
   {
     my $x1 = r->atan2(NaN, 0);
-    ok($x1->element->is_nan);
+    is($x1->value, 'NaN');
   }
   
   # atan2 - x is NaN
   {
     my $x1 = r->atan2(0, NaN);
-    ok($x1->element->is_nan);
+    is($x1->value, 'NaN');
   }
 }
 
@@ -965,28 +965,28 @@ use Math::Complex ();
   {
     my $x1 = c(Inf);
     my $x2 = r->cos($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
   
   # cos - -Inf
   {
     my $x1 = c(-Inf);
     my $x2 = r->cos($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 
   # cos - NA
   {
     my $x1 = c(NA);
     my $x2 = r->cos($x1);
-    ok($x2->element->is_na);
+    ok(!defined $x2->value);
   }  
 
   # cos - NaN
   {
     my $x1 = c(NaN);
     my $x2 = r->cos($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }
 
@@ -1019,27 +1019,27 @@ use Math::Complex ();
   {
     my $x1 = c(Inf);
     my $x2 = r->sin($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
   
   # sin - -Inf
   {
     my $x1 = c(-Inf);
     my $x2 = r->sin($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 
   # sin - NA
   {
     my $x1 = c(NA);
     my $x2 = r->sin($x1);
-    ok($x2->element->is_na);
+    ok(!defined $x2->value);
   }  
 
   # sin - NaN
   {
     my $x1 = c(NaN);
     my $x2 = r->sin($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }

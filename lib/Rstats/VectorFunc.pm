@@ -1,11 +1,11 @@
-package Rstats::ElementsFunc;
+package Rstats::VectorFunc;
 
 use strict;
 use warnings;
 use Carp 'croak', 'carp';
 
 require Rstats;
-use Rstats::Elements;
+use Rstats::Vector;
 use Scalar::Util ();
 use Math::Trig ();
 use POSIX ();
@@ -44,7 +44,7 @@ sub atanh {
     else {
       $e2 = multiply(
         complex(0.5, 0),
-        Rstats::ElementsFunc::log(
+        Rstats::VectorFunc::log(
           divide(
             add(complex(1, 0), $e1),
             subtract(complex(1, 0), $e1)
@@ -68,9 +68,9 @@ sub atanh {
       elsif (equal($e1, double(-1))) {
         $e2 = negativeInf;
       }
-      elsif (less_than(Rstats::ElementsFunc::abs($e1), double(1))) {
+      elsif (less_than(Rstats::VectorFunc::abs($e1), double(1))) {
         $e2 = divide(
-          Rstats::ElementsFunc::log(
+          Rstats::VectorFunc::log(
             divide(
               add(double(1), $e1),
               subtract(double(1), $e1)
@@ -99,11 +99,11 @@ sub acosh {
   
   my $e2;
   if ($e1->is_complex) {
-    my $e1_re = $e1->re;
-    my $e1_im = $e1->im;
+    my $e1_re = Rstats::VectorFunc::new_double($e1->value->{re});
+    my $e1_im = Rstats::VectorFunc::new_double($e1->value->{im});
 
     my $e2_t = add(
-      Rstats::ElementsFunc::sqrt(
+      Rstats::VectorFunc::sqrt(
         subtract(
           multiply($e1, $e1),
           complex(1, 0)
@@ -111,7 +111,7 @@ sub acosh {
       ),
       $e1
     );
-    my $e2_u = Rstats::ElementsFunc::log($e2_t);
+    my $e2_u = Rstats::VectorFunc::log($e2_t);
     my $e2_re = Re($e2_u);
     my $e2_im = Im($e2_u);
     
@@ -136,10 +136,10 @@ sub acosh {
     }
     else {
       if (more_than_or_equal($e1, double(1))) {
-        $e2 = Rstats::ElementsFunc::log(
+        $e2 = Rstats::VectorFunc::log(
           add(
             $e1,
-            Rstats::ElementsFunc::sqrt(
+            Rstats::VectorFunc::sqrt(
               subtract(
                 multiply($e1, $e1),
                 double(1)
@@ -170,7 +170,7 @@ sub asinh {
   if ($e1->is_complex) {
   
     my $e2_t = add(
-      Rstats::ElementsFunc::sqrt(
+      Rstats::VectorFunc::sqrt(
         add(
           multiply($e1, $e1),
           complex(1, 0)
@@ -179,7 +179,7 @@ sub asinh {
       $e1
     );
     
-    $e2 = Rstats::ElementsFunc::log($e2_t);
+    $e2 = Rstats::VectorFunc::log($e2_t);
   }
   elsif ($e1->is_numeric || $e1->is_logical) {
     $e1 = $e1->as_double;
@@ -194,7 +194,7 @@ sub asinh {
     else {
       my $e2_t = add(
         $e1,
-        Rstats::ElementsFunc::sqrt(
+        Rstats::VectorFunc::sqrt(
           add(
             multiply($e1, $e1),
             double(1)
@@ -202,7 +202,7 @@ sub asinh {
         )
       );
       
-      $e2 = Rstats::ElementsFunc::log($e2_t);
+      $e2 = Rstats::VectorFunc::log($e2_t);
     }
   }
   else {
@@ -231,7 +231,7 @@ sub atan {
     }
     else {
       my $e2_i = complex(0, 1);
-      my $e2_log = Rstats::ElementsFunc::log(
+      my $e2_log = Rstats::VectorFunc::log(
         divide(
           add($e2_i, $e1),
           subtract($e2_i, $e1)
@@ -245,7 +245,7 @@ sub atan {
     }
   }
   elsif ($e1->is_numeric || $e1->is_logical) {
-    $e2 = Rstats::ElementsFunc::atan2($e1->as_double, double(1));
+    $e2 = Rstats::VectorFunc::atan2($e1->as_double, double(1));
   }
   else {
     croak "Not implemented";
@@ -259,7 +259,7 @@ sub atan2 {
   my ($e1, $e2) = @_;
   
   croak "argument x is missing" unless defined $e2;
-  return Rstats::ElementsFunc::NA if $e1->is_na || $e2->is_na;
+  return Rstats::VectorFunc::NA if $e1->is_na || $e2->is_na;
   croak "two element should be same type" unless $e1->type eq $e2->type;
   
   my $e3;
@@ -274,10 +274,10 @@ sub atan2 {
       my $e3_r = add($e2, multiply($e1, $e3_i));
       $e3 = multiply(
         negation($e3_i),
-        Rstats::ElementsFunc::log(
+        Rstats::VectorFunc::log(
           divide(
             $e3_r,
-            Rstats::ElementsFunc::sqrt($e3_s)
+            Rstats::VectorFunc::sqrt($e3_s)
           )
         )
       );
@@ -291,7 +291,7 @@ sub atan2 {
     my $value2;
     
     if ($e1->is_nan || $e2->is_nan) {
-      $e3 = Rstats::ElementsFunc::NaN;
+      $e3 = Rstats::VectorFunc::NaN;
     }
     elsif ($e1->is_positive_infinite && $e2->is_positive_infinite) {
       $e3 = double(0.785398163397448);
@@ -315,7 +315,7 @@ sub atan2 {
       $e3 = double(-1.5707963267949);
     }
     elsif ($e2->is_negative_infinite) {
-      my $value1 = $e1->dv;
+      my $value1 = $e1->value;
       if ($value1 >= 0) {
         $e3 = double(3.14159265358979);
       }
@@ -324,8 +324,8 @@ sub atan2 {
       }
     }
     else {
-      my $value1 = $e1->dv;
-      my $value2 = $e2->dv;
+      my $value1 = $e1->value;
+      my $value2 = $e2->value;
       $e3 = double(CORE::atan2($value1, $value2));
     }
   }
@@ -336,14 +336,14 @@ sub atan2 {
   return $e3;
 }
 
-sub Mod { Rstats::ElementsFunc::abs(@_) }
+sub Mod { Rstats::VectorFunc::abs(@_) }
 
 sub Arg {
   my $e1 = shift;
   
   if ($e1->is_complex) {
-    my $e1_re = $e1->re;
-    my $e1_im = $e1->im;
+    my $e1_re = Rstats::VectorFunc::new_double($e1->value->{re});
+    my $e1_im = Rstats::VectorFunc::new_double($e1->value->{im});
     my $re = $e1_re->value;
     my $im = $e1_im->value;
     
@@ -394,11 +394,11 @@ sub expm1 {
       );
     }
     else {
-      $e2 = Rstats::ElementsFunc::subtract(Rstats::ElementsFunc::exp($e1), double(1));
+      $e2 = Rstats::VectorFunc::subtract(Rstats::VectorFunc::exp($e1), double(1));
     }
   }
   elsif ($e1->is_integer || $e1->is_logical) {
-    $e2 = Rstats::ElementsFunc::subtract(Rstats::ElementsFunc::exp($e1), double(1));
+    $e2 = Rstats::VectorFunc::subtract(Rstats::VectorFunc::exp($e1), double(1));
   }
   else {
     croak 'Not implemented';
@@ -413,14 +413,14 @@ sub acos {
   my $e2;
   if ($e1->is_complex) {
 
-    my $e1_re = $e1->re;
-    my $e1_im = $e1->im;
+    my $e1_re = Rstats::VectorFunc::new_double($e1->value->{re});
+    my $e1_im = Rstats::VectorFunc::new_double($e1->value->{im});
     
     if (equal($e1_re, double(1)) && equal($e1_im, double(0))) {
       $e2 = complex(0, 0);
     }
     else {
-      my $e2_t1 = Rstats::ElementsFunc::sqrt(
+      my $e2_t1 = Rstats::VectorFunc::sqrt(
         add(
           multiply(
             add($e1_re, double(1)),
@@ -429,7 +429,7 @@ sub acos {
           multiply($e1_im, $e1_im)
         )
       );
-      my $e2_t2 = Rstats::ElementsFunc::sqrt(
+      my $e2_t2 = Rstats::VectorFunc::sqrt(
         add(
           multiply(
             subtract($e1_re, double(1)),
@@ -460,8 +460,8 @@ sub acos {
         $e2_beta = double(-1);
       }
       
-      my $e2_u =  Rstats::ElementsFunc::atan2(
-        Rstats::ElementsFunc::sqrt(
+      my $e2_u =  Rstats::VectorFunc::atan2(
+        Rstats::VectorFunc::sqrt(
           subtract(
             double(1),
             multiply($e2_beta, $e2_beta)
@@ -470,10 +470,10 @@ sub acos {
         $e2_beta
       );
       
-      my $e2_v = Rstats::ElementsFunc::log(
+      my $e2_v = Rstats::VectorFunc::log(
         add(
           $e2_alpha,
-          Rstats::ElementsFunc::sqrt(
+          Rstats::VectorFunc::sqrt(
             subtract(
               multiply($e2_alpha, $e2_alpha),
               double(1)
@@ -499,9 +499,9 @@ sub acos {
     }
     else {
       $e1 = $e1->as_double;
-      if (less_than_or_equal(Rstats::ElementsFunc::abs($e1), double(1))) {
-        $e2 = Rstats::ElementsFunc::atan2(
-          Rstats::ElementsFunc::sqrt(
+      if (less_than_or_equal(Rstats::VectorFunc::abs($e1), double(1))) {
+        $e2 = Rstats::VectorFunc::atan2(
+          Rstats::VectorFunc::sqrt(
             subtract(
               double(1),
               multiply($e1, $e1)
@@ -531,14 +531,14 @@ sub asin {
   my $e2;
   if ($e1->is_complex) {
 
-    my $e1_re = $e1->re;
-    my $e1_im = $e1->im;
+    my $e1_re = Rstats::VectorFunc::new_double($e1->value->{re});
+    my $e1_im = Rstats::VectorFunc::new_double($e1->value->{im});
     
     if (equal($e1_re, double(0)) && equal($e1_im, double(0))) {
       $e2 = complex(0, 0);
     }
     else {
-      my $e2_t1 = Rstats::ElementsFunc::sqrt(
+      my $e2_t1 = Rstats::VectorFunc::sqrt(
         add(
           multiply(
             add($e1_re, double(1)),
@@ -547,7 +547,7 @@ sub asin {
           multiply($e1_im, $e1_im)
         )
       );
-      my $e2_t2 = Rstats::ElementsFunc::sqrt(
+      my $e2_t2 = Rstats::VectorFunc::sqrt(
         add(
           multiply(
             subtract($e1_re, double(1)),
@@ -578,9 +578,9 @@ sub asin {
         $e2_beta = double(-1);
       }
       
-      my $e2_u =  Rstats::ElementsFunc::atan2(
+      my $e2_u =  Rstats::VectorFunc::atan2(
         $e2_beta,
-        Rstats::ElementsFunc::sqrt(
+        Rstats::VectorFunc::sqrt(
           subtract(
             double(1),
             multiply($e2_beta, $e2_beta)
@@ -589,10 +589,10 @@ sub asin {
       );
       
       my $e2_v = negation(
-        Rstats::ElementsFunc::log(
+        Rstats::VectorFunc::log(
           add(
             $e2_alpha,
-            Rstats::ElementsFunc::sqrt(
+            Rstats::VectorFunc::sqrt(
               subtract(
                 multiply($e2_alpha, $e2_alpha),
                 double(1)
@@ -619,10 +619,10 @@ sub asin {
     }
     else {
       $e1 = $e1->as_double;
-      if (less_than_or_equal(Rstats::ElementsFunc::abs($e1), double(1))) {
-        $e2 = Rstats::ElementsFunc::atan2(
+      if (less_than_or_equal(Rstats::VectorFunc::abs($e1), double(1))) {
+        $e2 = Rstats::VectorFunc::atan2(
           $e1,
-          Rstats::ElementsFunc::sqrt(
+          Rstats::VectorFunc::sqrt(
             subtract(
               double(1),
               multiply($e1, $e1)
@@ -661,20 +661,11 @@ sub create {
     return integer($value);
   }
   elsif ($type eq 'logical') {
-    return logical($value ? Rstats::ElementsFunc::TRUE : Rstats::ElementsFunc::FALSE);
+    return logical($value ? Rstats::VectorFunc::TRUE : Rstats::VectorFunc::FALSE);
   }
   else {
     croak 'Invalid type';
   }
-}
-
-sub element {
-  my $value = shift;
-  
-  return ref $value ? $value
-    : Rstats::Util::is_perl_number($value) ? double($value)
-    : character($value);
-
 }
 
 sub negation {
@@ -687,13 +678,13 @@ sub negation {
     croak 'argument is not interpretable as logical'
   }
   elsif ($e1->is_complex) {
-    return complex_double(negation($e1->re), negation($e1->im));
+    return complex(-$e1->value->{re}, -$e1->value->{im});
   }
   elsif ($e1->is_double) {
     
     my $flag = $e1->flag;
-    if (defined $e1->dv) {
-      return double(-$e1->dv);
+    if (defined $e1->value) {
+      return double(-$e1->value);
     }
     elsif ($flag eq 'nan') {
       return NaN;
@@ -706,43 +697,11 @@ sub negation {
     }
   }
   elsif ($e1->is_integer || $e1->is_logical) {
-    return integer(-$e1->iv);
+    return integer(-$e1->value);
   }
   else {
     croak "Invalid type";
   }  
-}
-
-sub and {
-  my ($e1, $e2) = @_;
-  
-  return NA if $e1->is_na || $e2->is_na;
-  
-  $e1 = $e1->as_logical unless $e1->is_logical;
-  $e2 = $e2->as_logical unless $e2->is_logical;
-  
-  if ($e1->iv && $e2->iv) {
-    return TRUE;
-  }
-  else {
-    return FALSE;
-  }
-}
-
-sub or {
-  my ($e1, $e2) = @_;
-  
-  return NA if $e1->is_na || $e2->is_na;
-  
-  $e1 = $e1->as_logical unless $e1->is_logical;
-  $e2 = $e2->as_logical unless $e2->is_logical;
-  
-  if ($e1->iv || $e2->iv) {
-    return TRUE;
-  }
-  else {
-    return FALSE;
-  }
 }
 
 sub remainder {
@@ -759,16 +718,16 @@ sub remainder {
   elsif ($e1->is_double) {
     return NaN if $e1->is_nan || $e2->is_nan || $e1->is_infinite || $e2->is_infinite;
     
-    if ($e2->dv == 0) {
+    if ($e2->value == 0) {
       return NaN;
     }
     else {
-      my $v3_value = $e1->dv - POSIX::floor($e1->dv / $e2->dv) * $e2->dv;
+      my $v3_value = $e1->value - POSIX::floor($e1->value / $e2->value) * $e2->value;
       return double($v3_value);
     }
   }
   elsif ($e1->is_integer) {
-    if ($e2->iv == 0) {
+    if ($e2->value == 0) {
       return NaN;
     }
     else {
@@ -776,393 +735,12 @@ sub remainder {
     }
   }
   elsif ($e1->is_logical) {
-    if ($e2->iv == 0) {
+    if ($e2->value == 0) {
       return NaN;
     }
     else {
-      return double($e1->iv % $e2->iv);
+      return double($e1->value % $e2->value);
     }
-  }
-  else {
-    croak "Invalid type";
-  }
-}
-
-sub Conj {
-  my $e1 = shift;
-  
-  if ($e1->is_complex) {
-    return complex_double($e1->re, Rstats::ElementsFunc::negation($e1->im));
-  }
-  else {
-    croak 'Invalid type';
-  }
-}
-
-sub Re {
-  my $e1 = shift;
-  
-  if ($e1->is_complex) {
-    return $e1->re;
-  }
-  else {
-    'Not implemented';
-  }
-}
-
-sub Im {
-  my $e1 = shift;
-  
-  if ($e1->is_complex) {
-    return $e1->im;
-  }
-  else {
-    'Not implemented';
-  }
-}
-
-sub more_than {
-  my ($e1, $e2) = @_;
-  
-  return NA if $e1->is_na || $e2->is_na;
-  
-  if ($e1->is_character) {
-    return $e1->cv gt $e2->cv ? TRUE : FALSE;
-  }
-  elsif ($e1->is_complex) {
-    croak "invalid comparison with complex values";
-  }
-  elsif ($e1->is_double) {
-    return NA if $e1->is_nan || $e2->is_nan;
-    if (defined $e1->dv) {
-      if (defined $e2->dv) {
-        return $e1->dv > $e2->dv ? TRUE : FALSE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return FALSE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return TRUE;
-      }
-    }
-    elsif ($e1->is_positive_infinite) {
-      if (defined $e2->dv) {
-        return TRUE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return FALSE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return TRUE;
-      }
-    }
-    elsif ($e1->is_negative_infinite) {
-      if (defined $e2->dv) {
-        return FALSE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return FALSE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return FALSE;
-      }
-    }
-  }
-  elsif ($e1->is_integer) {
-    return $e1->iv > $e2->iv ? TRUE : FALSE;
-  }
-  elsif ($e1->is_logical) {
-    return $e1->iv > $e2->iv ? TRUE : FALSE;
-  }
-  else {
-    croak "Invalid type";
-  }
-}
-
-sub more_than_or_equal {
-  my ($e1, $e2) = @_;
-  
-  return NA if $e1->is_na || $e2->is_na;
-  
-  if ($e1->is_character) {
-    return $e1->cv ge $e2->cv ? TRUE : FALSE;
-  }
-  elsif ($e1->is_complex) {
-    croak "invalid comparison with complex values";
-  }
-  elsif ($e1->is_double) {
-    return NA if $e1->is_nan || $e2->is_nan;
-    if (defined $e1->dv) {
-      if (defined $e2->dv) {
-        return $e1->dv >= $e2->dv ? TRUE : FALSE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return FALSE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return TRUE;
-      }
-    }
-    elsif ($e1->is_positive_infinite) {
-      if (defined $e2->dv) {
-        return TRUE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return TRUE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return TRUE;
-      }
-    }
-    elsif ($e1->is_negative_infinite) {
-      if (defined $e2->dv) {
-        return FALSE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return FALSE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return TRUE;
-      }
-    }
-  }
-  elsif ($e1->is_integer) {
-    return $e1->iv >= $e2->iv ? TRUE : FALSE;
-  }
-  elsif ($e1->is_logical) {
-    return $e1->iv >= $e2->iv ? TRUE : FALSE;
-  }
-  else {
-    croak "Invalid type";
-  }
-}
-
-sub less_than {
-  my ($e1, $e2) = @_;
-  
-  return NA if $e1->is_na || $e2->is_na;
-  
-  if ($e1->is_character) {
-    return $e1->cv lt $e2->cv ? TRUE : FALSE;
-  }
-  elsif ($e1->is_complex) {
-    croak "invalid comparison with complex values";
-  }
-  elsif ($e1->is_double) {
-    return NA if $e1->is_nan || $e2->is_nan;
-    if (defined $e1->dv) {
-      if (defined $e2->dv) {
-        return $e1->dv < $e2->dv ? TRUE : FALSE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return TRUE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return FALSE;
-      }
-    }
-    elsif ($e1->is_positive_infinite) {
-      if (defined $e2->dv) {
-        return FALSE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return TRUE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return FALSE;
-      }
-    }
-    elsif ($e1->is_negative_infinite) {
-      if (defined $e2->dv) {
-        return TRUE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return TRUE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return FALSE;
-      }
-    }
-  }
-  elsif ($e1->is_integer) {
-    return $e1->iv < $e2->iv ? TRUE : FALSE;
-  }
-  elsif ($e1->is_logical) {
-    return $e1->iv < $e2->iv ? TRUE : FALSE;
-  }
-  else {
-    croak "Invalid type";
-  }
-}
-
-sub less_than_or_equal {
-  my ($e1, $e2) = @_;
-  
-  return NA if $e1->is_na || $e2->is_na;
-  
-  if ($e1->is_character) {
-    return $e1->cv le $e2->cv ? TRUE : FALSE;
-  }
-  elsif ($e1->is_complex) {
-    croak "invalid comparison with complex values";
-  }
-  elsif ($e1->is_double) {
-    return NA if $e1->is_nan || $e2->is_nan;
-    if (defined $e1->dv) {
-      if (defined $e2->dv) {
-        return $e1->dv <= $e2->dv ? TRUE : FALSE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return TRUE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return FALSE;
-      }
-    }
-    elsif ($e1->is_positive_infinite) {
-      if (defined $e2->dv) {
-        return FALSE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return TRUE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return FALSE;
-      }
-    }
-    elsif ($e1->is_negative_infinite) {
-      if (defined $e2->dv) {
-        return TRUE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return TRUE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return TRUE;
-      }
-    }
-  }
-  elsif ($e1->is_integer) {
-    return $e1->iv <= $e2->iv ? TRUE : FALSE;
-  }
-  elsif ($e1->is_logical) {
-    return $e1->iv <= $e2->iv ? TRUE : FALSE;
-  }
-  else {
-    croak "Invalid type";
-  }
-}
-
-sub equal {
-  my ($e1, $e2) = @_;
-  
-  return NA if $e1->is_na || $e2->is_na;
-  
-  if ($e1->is_character) {
-    return $e1->cv eq $e2->cv ? TRUE : FALSE;
-  }
-  elsif ($e1->is_complex) {
-    return $e1->re->value == $e2->re->value && $e1->im->value == $e2->im->value ? TRUE : FALSE;
-  }
-  elsif ($e1->is_double) {
-    return NA if $e1->is_nan || $e2->is_nan;
-    if (defined $e1->dv) {
-      if (defined $e2->dv) {
-        return $e1->dv == $e2->dv ? TRUE : FALSE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return FALSE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return FALSE;
-      }
-    }
-    elsif ($e1->is_positive_infinite) {
-      if (defined $e2->dv) {
-        return FALSE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return TRUE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return FALSE;
-      }
-    }
-    elsif ($e1->is_negative_infinite) {
-      if (defined $e2->dv) {
-        return FALSE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return FALSE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return TRUE;
-      }
-    }
-  }
-  elsif ($e1->is_integer) {
-    return $e1->iv == $e2->iv ? TRUE : FALSE;
-  }
-  elsif ($e1->is_logical) {
-    return $e1->iv == $e2->iv ? TRUE : FALSE;
-  }
-  else {
-    croak "Invalid type";
-  }
-}
-
-sub not_equal {
-  my ($e1, $e2) = @_;
-  
-  return NA if $e1->is_na || $e2->is_na;
-  
-  if ($e1->is_character) {
-    return $e1->cv ne $e2->cv ? TRUE : FALSE;
-  }
-  elsif ($e1->is_complex) {
-    return !($e1->re->value == $e2->re->value && $e1->im->value == $e2->im->value) ? TRUE : FALSE;
-  }
-  elsif ($e1->is_double) {
-    return NA if $e1->is_nan || $e2->is_nan;
-    if (defined $e1->dv) {
-      if (defined $e2->dv) {
-        return $e1->dv != $e2->dv ? TRUE : FALSE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return TRUE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return TRUE;
-      }
-    }
-    elsif ($e1->is_positive_infinite) {
-      if (defined $e2->dv) {
-        return TRUE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return FALSE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return TRUE;
-      }
-    }
-    elsif ($e1->is_negative_infinite) {
-      if (defined $e2->dv) {
-        return TRUE;
-      }
-      elsif ($e2->is_positive_infinite) {
-        return TRUE;
-      }
-      elsif ($e2->is_negative_infinite) {
-        return FALSE;
-      }
-    }
-  }
-  elsif ($e1->is_integer) {
-    return $e1->iv != $e2->iv ? TRUE : FALSE;
-  }
-  elsif ($e1->is_logical) {
-    return $e1->iv != $e2->iv ? TRUE : FALSE;
   }
   else {
     croak "Invalid type";
@@ -1171,6 +749,6 @@ sub not_equal {
 
 =head1 NAME
 
-Rstats::ElementsFunc - Elements functions
+Rstats::VectorFunc - Vector functions
 
 1;

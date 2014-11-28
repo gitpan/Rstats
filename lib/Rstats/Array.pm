@@ -1,7 +1,7 @@
-package Rstats::Container::Array;
+package Rstats::Array;
 use Rstats::Container -base;
 
-use Rstats::ElementsFunc;
+use Rstats::VectorFunc;
 use Rstats::Func;
 use Rstats::Util;
 use Carp 'croak', 'carp';
@@ -16,7 +16,7 @@ use overload
   '/' => sub { shift->operation('divide', @_) },
   '%' => sub { shift->operation('remainder', @_) },
   'neg' => sub { shift->negation(@_) },
-  '**' => sub { shift->operation('raise', @_) },
+  '**' => sub { shift->operation('pow', @_) },
   'x' => sub { shift->inner_product(@_) },
   '<' => sub { shift->operation('less_than', @_) },
   '<=' => sub { shift->operation('less_than_or_equal', @_) },
@@ -202,7 +202,7 @@ sub is_nan {
 sub is_null {
   my $x1 = Rstats::Func::to_c(shift);
   
-  my @a2_elements = [!$x1->length_value ? Rstats::ElementsFunc::TRUE() : Rstats::ElementsFunc::FALSE()];
+  my @a2_elements = [!$x1->length_value ? Rstats::VectorFunc::TRUE() : Rstats::VectorFunc::FALSE()];
   my $x2 = Rstats::Func::c(\@a2_elements);
   $x1->_copy_attrs_to($x1);
   $x2->mode('logical');
@@ -244,7 +244,7 @@ sub get {
   
   my $self_elements = $self->decompose_elements;
   my @a2_elements
-    = map { defined $self_elements->[$_] ? $self_elements->[$_] : Rstats::ElementsFunc::NA() }
+    = map { defined $self_elements->[$_] ? $self_elements->[$_] : Rstats::VectorFunc::NA() }
       @$poss;
   
   # array
@@ -267,7 +267,7 @@ sub _levels_h {
   my $levels_h = {};
   my $levels = $self->levels->values;
   for (my $i = 1; $i <= @$levels; $i++) {
-    $levels_h->{$levels->[$i - 1]} = Rstats::ElementsFunc::integer($i);
+    $levels_h->{$levels->[$i - 1]} = Rstats::VectorFunc::integer($i);
   }
   
   return $levels_h;
@@ -300,7 +300,7 @@ sub set {
       my $pos = $poss->[$i];
       my $element = $x2_elements->[(($i + 1) % @$poss) - 1];
       if ($element->is_na) {
-        $self_elements->[$pos] = Rstats::ElementsFunc::NA();
+        $self_elements->[$pos] = Rstats::VectorFunc::NA();
       }
       else {
         my $value = $element->to_string;
@@ -309,7 +309,7 @@ sub set {
         }
         else {
           carp "invalid factor level, NA generated";
-          $self_elements->[$pos] = Rstats::ElementsFunc::NA();
+          $self_elements->[$pos] = Rstats::VectorFunc::NA();
         }
       }
     }
@@ -322,7 +322,7 @@ sub set {
     }
   }
   
-  $self->elements(Rstats::Elements->compose($self->{type}, $self_elements));
+  $self->elements(Rstats::Vector->compose($self->{type}, $self_elements));
   
   return $self;
 }
@@ -390,7 +390,7 @@ sub _fix_position {
   
   my $x1;
   my $x2;
-  if (ref $data eq 'Rstats::Container::Array') {
+  if (ref $data eq 'Rstats::Array') {
     $x1 = $self;
     $x2 = $data;
   }
@@ -412,4 +412,4 @@ sub _fix_position {
 
 =head1 NAME
 
-Rstats::Container::Array - Array
+Rstats::Array - Array

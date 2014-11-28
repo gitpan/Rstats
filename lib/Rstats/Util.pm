@@ -7,7 +7,7 @@ use Scalar::Util ();
 use B ();
 use Carp 'croak';
 use Rstats::Func;
-use Rstats::ElementsFunc;
+use Rstats::VectorFunc;
 
 sub is_perl_number {
   my ($value) = @_;
@@ -36,83 +36,6 @@ sub higher_type {
   }
   else {
     return $type2;
-  }
-}
-
-sub looks_like_na {
-  my $value = shift;
-  
-  return if !defined $value || !CORE::length $value;
-  
-  if ($value eq 'NA') {
-    return Rstats::ElementsFunc::NA();
-  }
-  else {
-    return;
-  }
-}
-
-sub looks_like_logical {
-  my $value = shift;
-  
-  return if !defined $value || !CORE::length $value;
-  
-  if ($value =~ /^(T|TRUE|F|FALSE)$/) {
-    if ($value =~ /T/) {
-      return Rstats::ElementsFunc::logical(1);
-    }
-    else {
-      return Rstats::ElementsFunc::logical(0);
-    }
-  }
-  else {
-    return;
-  }
-}
-
-sub looks_like_double {
-  my $value = shift;
-  
-  return if !defined $value || !CORE::length $value;
-  $value =~ s/^ +//;
-  $value =~ s/ +$//;
-  
-  if (Scalar::Util::looks_like_number($value)) {
-    return $value + 0;
-  }
-  else {
-    return;
-  }
-}
-
-sub looks_like_complex {
-  my $value = shift;
-  
-  return if !defined $value || !CORE::length $value;
-  $value =~ s/^ +//;
-  $value =~ s/ +$//;
-  
-  my $re;
-  my $im;
-  
-  if ($value =~ /^([\+\-]?[^\+\-]+)i$/) {
-    $re = 0;
-    $im = $1;
-  }
-  elsif($value =~ /^([\+\-]?[^\+\-]+)(?:([\+\-][^\+\-i]+)i)?$/) {
-    $re = $1;
-    $im = $2;
-    $im = 0 unless defined $im;
-  }
-  else {
-    return;
-  }
-  
-  if (defined Rstats::Util::looks_like_double($re) && defined Rstats::Util::looks_like_double($im)) {
-    return {re => $re + 0, im => $im + 0};
-  }
-  else {
-    return;
   }
 }
 
@@ -217,13 +140,26 @@ sub parse_index {
   }
 }
 
-# XS functions
-# index_to_pos()
-# pos_to_index()
-# cross_product()
-
 =head1 NAME
 
 Rstats::Util - Utility class
+
+=head1 FUNCTION
+
+=head2 looks_like_na (xs)
+
+=head2 looks_like_logical (xs)
+
+=head2 looks_like_double (xs)
+
+=head2 looks_like_integer (xs)
+
+=head2 looks_like_complex (xs)
+
+=head2 index_to_pos (xs)
+
+=head2 pos_to_index (xs)
+
+=head2 cross_product (xs)
 
 1;

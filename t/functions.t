@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Rstats;
-use Rstats::ElementsFunc;
+use Rstats::VectorFunc;
 use Math::Trig ();
 
 # Method
@@ -234,7 +234,7 @@ use Math::Trig ();
   {
     my $x1 = c(NaN);
     my $x2 = r->expm1($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }
 
@@ -284,7 +284,7 @@ use Math::Trig ();
   {
     my $x1 = c(NaN);
     my $x2 = r->exp($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }
 
@@ -404,7 +404,7 @@ use Math::Trig ();
   {
     my $x1 = c(-Inf);
     my $x2 = r->log($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 
   # log - NA
@@ -418,7 +418,7 @@ use Math::Trig ();
   {
     my $x1 = c(NaN);
     my $x2 = r->log($x1);
-    ok($x2->element->is_nan);
+    is($x2->value, 'NaN');
   }
 }
 
@@ -1098,7 +1098,7 @@ use Math::Trig ();
 {
   my $na = NA;
   my $na_element = $na->element;
-  is($na_element, Rstats::ElementsFunc::NA);
+  is($na_element, Rstats::VectorFunc::NA);
 }
 
 # round
