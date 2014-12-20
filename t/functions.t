@@ -213,7 +213,7 @@ use Math::Trig ();
   {
     my $x1 = c(Inf);
     my $x2 = r->expm1($x1);
-    ok($x2->element->is_positive_infinite);
+    ok($x2->vector_part->is_positive_infinite);
   }
   
   # expm1 - -Inf
@@ -227,7 +227,7 @@ use Math::Trig ();
   {
     my $x1 = c(NA);
     my $x2 = r->expm1($x1);
-    ok($x2->element->is_na);
+    ok($x2->vector_part->is_na);
   }
 
   # expm1 - NaN
@@ -263,7 +263,7 @@ use Math::Trig ();
   {
     my $x1 = c(Inf);
     my $x2 = r->exp($x1);
-    ok($x2->element->is_positive_infinite);
+    ok($x2->vector_part->is_positive_infinite);
   }
   
   # exp - -Inf
@@ -277,7 +277,7 @@ use Math::Trig ();
   {
     my $x1 = c(NA);
     my $x2 = r->exp($x1);
-    ok($x2->element->is_na);
+    ok($x2->vector_part->is_na);
   }  
 
   # exp - NaN
@@ -359,8 +359,8 @@ use Math::Trig ();
     my $x2 = r->logb($x1);
     is($x2->values->[0], 0);
     is(sprintf("%.5f", $x2->values->[1]), '2.30259');
-    ok($x2->decompose_elements->[2]->is_nan);
-    ok($x2->decompose_elements->[3]->is_negative_infinite);
+    is($x2->values->[2], 'NaN');
+    ok($x2->values->[3], '-Inf');
     is_deeply(r->dim($x2)->values, [4]);
     ok(r->is_double($x2));
   }
@@ -387,8 +387,8 @@ use Math::Trig ();
     my $x2 = r->log($x1);
     is($x2->values->[0], 0);
     is(sprintf("%.5f", $x2->values->[1]), '2.30259');
-    ok($x2->decompose_elements->[2]->is_nan);
-    ok($x2->decompose_elements->[3]->is_negative_infinite);
+    ok($x2->values->[2], 'NaN');
+    ok($x2->values->[3], '-Inf');
     is_deeply(r->dim($x2)->values, [4]);
     ok(r->is_double($x2));
   }
@@ -411,7 +411,7 @@ use Math::Trig ();
   {
     my $x1 = c(NA);
     my $x2 = r->log($x1);
-    ok($x2->element->is_na);
+    ok($x2->vector_part->is_na);
   }  
 
   # log - NaN
@@ -1097,8 +1097,8 @@ use Math::Trig ();
 # NA
 {
   my $na = NA;
-  my $na_element = $na->element;
-  is($na_element, Rstats::VectorFunc::NA);
+  my $na_element = $na->vector_part;
+  is($na_element->value, undef);
 }
 
 # round

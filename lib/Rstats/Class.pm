@@ -278,7 +278,7 @@ sub lapply {
   }
   
   my $x2 = Rstats::Func::list(@$new_elements);
-  $x1->_copy_attrs_to($x2);
+  $x1->copy_attrs_to($x2);
   
   return $x2;
 }
@@ -291,27 +291,27 @@ sub tapply {
   
   my $func = ref $func_name ? $func_name : $self->functions->{$func_name};
   
-  my $new_elements = [];
-  my $x1_elements = $x1->decompose_elements;
-  my $x2_elements = $x2->decompose_elements;
+  my $new_values = [];
+  my $x1_values = $x1->values;
+  my $x2_values = $x2->values;
   
-  # Group elements
+  # Group values
   for (my $i = 0; $i < $x1->length_value; $i++) {
-    my $x1_element = $x1_elements->[$i];
-    my $index = $x2_elements->[$i];
-    $new_elements->[$index] ||= [];
-    push @{$new_elements->[$index]}, $x1_element;
+    my $x1_value = $x1_values->[$i];
+    my $index = $x2_values->[$i];
+    $new_values->[$index] ||= [];
+    push @{$new_values->[$index]}, $x1_value;
   }
   
   # Apply
-  my $new_elements2 = [];
-  for (my $i = 1; $i < @$new_elements; $i++) {
-    my $x = $func->($new_elements->[$i]);
-    push @$new_elements2, $x;
+  my $new_values2 = [];
+  for (my $i = 1; $i < @$new_values; $i++) {
+    my $x = $func->($new_values->[$i]);
+    push @$new_values2, $x;
   }
   
-  my $x4_length = @$new_elements2;
-  my $x4 = Rstats::Func::array($new_elements2, $x4_length);
+  my $x4_length = @$new_values2;
+  my $x4 = Rstats::Func::array($new_values2, $x4_length);
   $x4->names($x2->levels);
   
   return $x4;
@@ -337,7 +337,7 @@ sub mapply {
   # Apply
   my $new_xs = [];
   for (my $i = 0; $i < $max_length; $i++) {
-    my @args = map { $_->element($i + 1) } @xs;
+    my @args = map { $_->vector_part($i + 1) } @xs;
     my $x = $func->(@args);
     push @$new_xs, $x;
   }
@@ -369,7 +369,7 @@ sub apply {
   my $new_elements_array = [];
   for (my $i = 0; $i < $x1_length; $i++) {
     my $index = Rstats::Util::pos_to_index($i, $dim_values);
-    my $e1 = $x1->element(@$index);
+    my $e1 = $x1->vector_part(@$index);
     my $new_index = [];
     for my $i (@$margin_values) {
       push @$new_index, $index->[$i - 1];
@@ -384,10 +384,12 @@ sub apply {
     push @$new_elements, $func->($element_array);
   }
 
-  my $x2 = $x1->clone(elements => $new_elements);
-  $x2->{dim} = $new_dim_values;
+  my $x2 = Rstats::Func::NULL();
+  $x2->vector(Rstats::Func::c($new_elements)->vector);
+  $x1->copy_attrs_to($x1);
+  $x2->{dim} = Rstats::VectorFunc::new_integer(@$new_dim_values);
   
-  if (@{$x2->{dim}} == 1) {
+  if ($x2->{dim}->length_value == 1) {
     delete $x2->{dim};
   }
   
@@ -417,7 +419,7 @@ sub sweep {
       push @$new_index, $x1_index->[$x_margin_value - 1];
     }
     
-    my $e1 = $x2->element(@{$new_index});
+    my $e1 = $x2->vector_part(@{$new_index});
     push @$x_result_elements, $e1;
   }
   my $x3 = Rstats::Func::c($x_result_elements);
@@ -442,7 +444,7 @@ sub sweep {
     $x4 = $x1 % $x3;
   }
   
-  $x1->_copy_attrs_to($x4);
+  $x1->copy_attrs_to($x4);
   
   return $x4;
 }

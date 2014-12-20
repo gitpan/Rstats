@@ -7,9 +7,6 @@ use Carp 'croak';
 use overload '""' => \&to_string,
   fallback => 1;
 
-has list => sub { [] };
-has mode => sub { Rstats::Func::c('list') };
-
 sub getin {
   my ($self, $_index) = @_;
   
@@ -45,8 +42,8 @@ sub get {
   my $index_values;
   if ($index->is_character) {
     $index_values = [];
-    for my $element (@{$index->decompose_elements}) {
-      push @$index_values, $self->_name_to_index($element);
+    for my $value (@{$index->values}) {
+      push @$index_values, $self->_name_to_index($value);
     }
   }
   else {
@@ -56,7 +53,7 @@ sub get {
     push @$list_elements, $elements->[$i - 1];
   }
 
-  $self->_copy_attrs_to($list, {new_indexes => [Rstats::Func::to_c($index_values)]});
+  $self->copy_attrs_to($list, {new_indexes => [Rstats::Func::to_c($index_values)]});
 
   return $list;
 }
@@ -78,11 +75,15 @@ sub set {
   if ($v1->is_null) {
     splice @{$self->list}, $index - 1, 1;
     if (exists $self->{names}) {
-      splice @{$self->{names}}, $index - 1, 1;
+      my $new_names_values = $self->{names}->values;
+      splice @$new_names_values, $index - 1, 1;
+      $self->{names} = Rstats::VectorFunc::new_character(@$new_names_values);
     }
     
     if (exists $self->{dimnames}) {
-      splice @{$self->{dimnames}[1]}, $index - 1, 1;
+      my $new_dimname_values = $self->{dimnames}[1]->values;
+      splice @$new_dimname_values, $index - 1, 1;
+      $self->{dimnames}[1] = Rstats::VectorFunc::new_character(@$new_dimname_values);
     }
   }
   else {

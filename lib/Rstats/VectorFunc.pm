@@ -6,9 +6,7 @@ use Carp 'croak', 'carp';
 
 require Rstats;
 use Rstats::Vector;
-use Scalar::Util ();
 use Math::Trig ();
-use POSIX ();
 
 sub TRUE () { new_true() }
 sub FALSE () { new_false() }
@@ -18,36 +16,51 @@ sub Inf () { new_inf() }
 sub negativeInf () { new_negative_inf() }
 sub pi () { new_double(Math::Trig::pi) }
 
-sub character { new_character(@_) }
-
-sub complex { new_complex(@_) }
-
-sub double { new_double(shift) }
-sub integer { new_integer(shift) }
-sub logical { new_logical(shift) }
+sub new_vector {
+  my $type = shift;
+  
+  if ($type eq 'character') {
+    return new_character(@_);
+  }
+  elsif ($type eq 'complex') {
+    return new_complex(@_);
+  }
+  elsif ($type eq 'double') {
+    return new_double(@_);
+  }
+  elsif ($type eq 'integer') {
+    return new_integer(@_);
+  }
+  elsif ($type eq 'logical') {
+    return new_logical(@_);
+  }
+  else {
+    croak("Invalid type $type is passed(new_vector)");
+  }
+}
 
 sub atanh {
   my $e1 = shift;
   
-  return $e1 if $e1->is_na;
+  return $e1 if $e1->is_na->value;
   
   my $e2;
   if ($e1->is_complex) {
-    if (equal($e1, complex(1, 0))) {
+    if (equal($e1, new_complex({re => 1, im => 0}))->value) {
       $e2 = complex_double(Inf, NaN);
       carp("In atanh() : NaNs produced");
     }
-    elsif (equal($e1, complex(-1, 0))) {
+    elsif (equal($e1, new_complex({re => -1, im => 0}))->value) {
       $e2 = complex_double(negativeInf, NaN);
       carp("In atanh() : NaNs produced");
     }
     else {
       $e2 = multiply(
-        complex(0.5, 0),
+        new_complex({re => 0.5, im => 0}),
         Rstats::VectorFunc::log(
           divide(
-            add(complex(1, 0), $e1),
-            subtract(complex(1, 0), $e1)
+            add(new_complex({re => 1, im => 0}), $e1),
+            subtract(new_complex({re => 1, im => 0}), $e1)
           )
         )
       );
@@ -55,28 +68,28 @@ sub atanh {
   }
   elsif ($e1->is_numeric || $e1->is_logical) {
     $e1 = $e1->as_double;
-    return $e1 if $e1->is_nan;
+    return $e1 if $e1->is_nan->value;
     
-    if ($e1->is_infinite) {
+    if ($e1->is_infinite->value) {
         $e2 = NaN;
         carp "In acosh() : NaNs produced";
     }
     else {
-      if (equal($e1, double(1))) {
+      if (equal($e1, new_double(1))->value) {
         $e2 = Inf;
       }
-      elsif (equal($e1, double(-1))) {
+      elsif (equal($e1, new_double(-1))->value) {
         $e2 = negativeInf;
       }
-      elsif (less_than(Rstats::VectorFunc::abs($e1), double(1))) {
+      elsif (less_than(Rstats::VectorFunc::abs($e1), new_double(1))->value) {
         $e2 = divide(
           Rstats::VectorFunc::log(
             divide(
-              add(double(1), $e1),
-              subtract(double(1), $e1)
+              add(new_double(1), $e1),
+              subtract(new_double(1), $e1)
             )
           ),
-          double(2)
+          new_double(2)
         );
       }
       else {
@@ -95,7 +108,7 @@ sub atanh {
 sub acosh {
   my $e1 = shift;
   
-  return $e1 if $e1->is_na;
+  return $e1 if $e1->is_na->value;
   
   my $e2;
   if ($e1->is_complex) {
@@ -106,7 +119,7 @@ sub acosh {
       Rstats::VectorFunc::sqrt(
         subtract(
           multiply($e1, $e1),
-          complex(1, 0)
+          new_complex({re => 1, im => 0})
         ),
       ),
       $e1
@@ -115,34 +128,34 @@ sub acosh {
     my $e2_re = Re($e2_u);
     my $e2_im = Im($e2_u);
     
-    if (less_than($e1_re, double(0)) && equal($e1_im, double(0))) {
+    if (less_than($e1_re, new_double(0))->value && equal($e1_im, new_double(0))->value) {
       $e2 = complex_double($e2_re, negation($e2_im));
     }
     else {
       $e2 = complex_double($e2_re, $e2_im);
     }
     
-    if (less_than($e1_re, double(0))) {
+    if (less_than($e1_re, new_double(0))->value) {
       $e2 = negation($e2);
     }
   }
   elsif ($e1->is_numeric || $e1->is_logical) {
     $e1 = $e1->as_double;
-    return $e1 if $e1->is_nan;
+    return $e1 if $e1->is_nan->value;
     
-    if ($e1->is_infinite) {
+    if ($e1->is_infinite->value) {
         $e2 = NaN;
         carp "In acosh() : NaNs produced";
     }
     else {
-      if (more_than_or_equal($e1, double(1))) {
+      if (more_than_or_equal($e1, new_double(1))->value) {
         $e2 = Rstats::VectorFunc::log(
           add(
             $e1,
             Rstats::VectorFunc::sqrt(
               subtract(
                 multiply($e1, $e1),
-                double(1)
+                new_double(1)
               )
             )
           )
@@ -164,7 +177,7 @@ sub acosh {
 sub asinh {
   my $e1 = shift;
   
-  return $e1 if $e1->is_na;
+  return $e1 if $e1->is_na->value;
   
   my $e2;
   if ($e1->is_complex) {
@@ -173,7 +186,7 @@ sub asinh {
       Rstats::VectorFunc::sqrt(
         add(
           multiply($e1, $e1),
-          complex(1, 0)
+          new_complex({re => 1, im => 0})
         )
       ),
       $e1
@@ -183,12 +196,12 @@ sub asinh {
   }
   elsif ($e1->is_numeric || $e1->is_logical) {
     $e1 = $e1->as_double;
-    return $e1 if $e1->is_nan;
+    return $e1 if $e1->is_nan->value;
     
-    if ($e1->is_positive_infinite) {
+    if ($e1->is_positive_infinite->value) {
       $e2 = Inf;
     }
-    elsif ($e1->is_negative_infinite) {
+    elsif ($e1->is_negative_infinite->value) {
       $e2 = negativeInf;
     }
     else {
@@ -197,7 +210,7 @@ sub asinh {
         Rstats::VectorFunc::sqrt(
           add(
             multiply($e1, $e1),
-            double(1)
+            new_double(1)
           )
         )
       );
@@ -215,22 +228,22 @@ sub asinh {
 sub atan {
   my $e1 = shift;
   
-  return $e1 if $e1->is_na;
+  return $e1 if $e1->is_na->value;
   
   my $e2;
   if ($e1->is_complex) {
     
-    if (equal($e1, complex(0, 0))) {
-      $e2 = complex(0, 0);
+    if (equal($e1, new_complex({re => 0, im => 0}))->value) {
+      $e2 = new_complex({re => 0, im => 0});
     }
-    elsif (equal($e1, complex(0, 1))) {
-      $e2 = complex_double(double(0), Inf);
+    elsif (equal($e1, new_complex({re => 0, im => 1}))->value) {
+      $e2 = complex_double(new_double(0), Inf);
     }
-    elsif (equal($e1, complex(0, -1))) {
-      $e2 = complex_double(double(0), negativeInf);
+    elsif (equal($e1, new_complex({re => 0, im => -1}))->value) {
+      $e2 = complex_double(new_double(0), negativeInf);
     }
     else {
-      my $e2_i = complex(0, 1);
+      my $e2_i = new_complex({re => 0, im => 1});
       my $e2_log = Rstats::VectorFunc::log(
         divide(
           add($e2_i, $e1),
@@ -239,13 +252,13 @@ sub atan {
       );
       
       $e2 = multiply(
-        divide($e2_i, complex(2, 0)),
+        divide($e2_i, new_complex({re => 2, im => 0})),
         $e2_log
       );
     }
   }
   elsif ($e1->is_numeric || $e1->is_logical) {
-    $e2 = Rstats::VectorFunc::atan2($e1->as_double, double(1));
+    $e2 = Rstats::VectorFunc::atan2($e1->as_double, new_double(1));
   }
   else {
     croak "Not implemented";
@@ -259,18 +272,18 @@ sub atan2 {
   my ($e1, $e2) = @_;
   
   croak "argument x is missing" unless defined $e2;
-  return Rstats::VectorFunc::NA if $e1->is_na || $e2->is_na;
+  return Rstats::VectorFunc::NA if $e1->is_na->value || $e2->is_na->value;
   croak "two element should be same type" unless $e1->type eq $e2->type;
   
   my $e3;
   if ($e1->is_complex) {
     
     my $e3_s = add(multiply($e1, $e1), multiply($e2, $e2));
-    if (equal($e3_s, complex(0, 0))) {
-      $e3 = complex(0, 0);
+    if (equal($e3_s, new_complex({re => 0, im => 0}))->value) {
+      $e3 = new_complex({re => 0, im => 0});
     }
     else {
-      my $e3_i = complex(0, 1);
+      my $e3_i = new_complex({re => 0, im => 1});
       my $e3_r = add($e2, multiply($e1, $e3_i));
       $e3 = multiply(
         negation($e3_i),
@@ -290,43 +303,43 @@ sub atan2 {
     my $value1;
     my $value2;
     
-    if ($e1->is_nan || $e2->is_nan) {
+    if ($e1->is_nan->value || $e2->is_nan->value) {
       $e3 = Rstats::VectorFunc::NaN;
     }
-    elsif ($e1->is_positive_infinite && $e2->is_positive_infinite) {
-      $e3 = double(0.785398163397448);
+    elsif ($e1->is_positive_infinite->value && $e2->is_positive_infinite->value) {
+      $e3 = new_double(0.785398163397448);
     }
-    elsif ($e1->is_positive_infinite && $e2->is_negative_infinite) {
-      $e3 = double(2.35619449019234);
+    elsif ($e1->is_positive_infinite->value && $e2->is_negative_infinite->value) {
+      $e3 = new_double(2.35619449019234);
     }
-    elsif ($e1->is_negative_infinite && $e2->is_positive_infinite) {
-      $e3 = double(-0.785398163397448);
+    elsif ($e1->is_negative_infinite->value && $e2->is_positive_infinite->value) {
+      $e3 = new_double(-0.785398163397448);
     }
-    elsif ($e1->is_negative_infinite && $e2->is_negative_infinite) {
-      $e3 = double(-2.35619449019234);
+    elsif ($e1->is_negative_infinite->value && $e2->is_negative_infinite->value) {
+      $e3 = new_double(-2.35619449019234);
     }
-    elsif ($e1->is_positive_infinite) {
-      $e3 = double(1.5707963267949);
+    elsif ($e1->is_positive_infinite->value) {
+      $e3 = new_double(1.5707963267949);
     }
-    elsif ($e2->is_positive_infinite) {
-      $e3 = double(0)
+    elsif ($e2->is_positive_infinite->value) {
+      $e3 = new_double(0)
     }
-    elsif ($e1->is_negative_infinite) {
-      $e3 = double(-1.5707963267949);
+    elsif ($e1->is_negative_infinite->value) {
+      $e3 = new_double(-1.5707963267949);
     }
-    elsif ($e2->is_negative_infinite) {
+    elsif ($e2->is_negative_infinite->value) {
       my $value1 = $e1->value;
       if ($value1 >= 0) {
-        $e3 = double(3.14159265358979);
+        $e3 = new_double(3.14159265358979);
       }
       else {
-        $e3 = double(-3.14159265358979);
+        $e3 = new_double(-3.14159265358979);
       }
     }
     else {
       my $value1 = $e1->value;
       my $value2 = $e2->value;
-      $e3 = double(CORE::atan2($value1, $value2));
+      $e3 = new_double(CORE::atan2($value1, $value2));
     }
   }
   else {
@@ -334,32 +347,6 @@ sub atan2 {
   }
   
   return $e3;
-}
-
-sub Mod { Rstats::VectorFunc::abs(@_) }
-
-sub Arg {
-  my $e1 = shift;
-  
-  if ($e1->is_complex) {
-    my $e1_re = Rstats::VectorFunc::new_double($e1->value->{re});
-    my $e1_im = Rstats::VectorFunc::new_double($e1->value->{im});
-    my $re = $e1_re->value;
-    my $im = $e1_im->value;
-    
-    my $e2;
-    if ($re == 0 && $im == 0) {
-      $e2 = double(0);
-    }
-    else {
-      $e2 = double(CORE::atan2($im, $re));
-    }
-    
-    return $e2;
-  }
-  else {
-    croak "Not implemented";
-  }
 }
 
 sub hash {
@@ -373,19 +360,19 @@ sub hash {
 sub expm1 {
   my $e1 = shift;
   
-  return $e1 if $e1->is_na;
+  return $e1 if $e1->is_na->value;
   
   my $e2;
   if ($e1->is_complex) {
     croak 'Error in expm1 : unimplemented complex function';
   }
   elsif ($e1->is_double) {
-    return $e1 if $e1->is_nan;
-    if (less_than($e1, double(1e-5)) && more_than($e1, negativeInf)) {
+    return $e1 if $e1->is_nan->value;
+    if (less_than($e1, new_double(1e-5))->value && more_than($e1, negativeInf)->value) {
       $e2 = add(
         $e1,
         multiply(
-          double(0.5),
+          new_double(0.5),
           multiply(
             $e1,
             $e1
@@ -394,11 +381,11 @@ sub expm1 {
       );
     }
     else {
-      $e2 = Rstats::VectorFunc::subtract(Rstats::VectorFunc::exp($e1), double(1));
+      $e2 = Rstats::VectorFunc::subtract(Rstats::VectorFunc::exp($e1), new_double(1));
     }
   }
   elsif ($e1->is_integer || $e1->is_logical) {
-    $e2 = Rstats::VectorFunc::subtract(Rstats::VectorFunc::exp($e1), double(1));
+    $e2 = Rstats::VectorFunc::subtract(Rstats::VectorFunc::exp($e1), new_double(1));
   }
   else {
     croak 'Not implemented';
@@ -408,7 +395,7 @@ sub expm1 {
 sub acos {
   my $e1 = shift;
 
-  return $e1 if $e1->is_na;
+  return $e1 if $e1->is_na->value;
   
   my $e2;
   if ($e1->is_complex) {
@@ -416,15 +403,15 @@ sub acos {
     my $e1_re = Rstats::VectorFunc::new_double($e1->value->{re});
     my $e1_im = Rstats::VectorFunc::new_double($e1->value->{im});
     
-    if (equal($e1_re, double(1)) && equal($e1_im, double(0))) {
-      $e2 = complex(0, 0);
+    if (equal($e1_re, new_double(1))->value && equal($e1_im, new_double(0))->value) {
+      $e2 = new_complex({re => 0, im => 0});
     }
     else {
       my $e2_t1 = Rstats::VectorFunc::sqrt(
         add(
           multiply(
-            add($e1_re, double(1)),
-            add($e1_re, double(1))
+            add($e1_re, new_double(1)),
+            add($e1_re, new_double(1))
           ),
           multiply($e1_im, $e1_im)
         )
@@ -432,8 +419,8 @@ sub acos {
       my $e2_t2 = Rstats::VectorFunc::sqrt(
         add(
           multiply(
-            subtract($e1_re, double(1)),
-            subtract($e1_re, double(1))
+            subtract($e1_re, new_double(1)),
+            subtract($e1_re, new_double(1))
           ),
           multiply($e1_im, $e1_im)
         )
@@ -441,29 +428,29 @@ sub acos {
       
       my $e2_alpha = divide(
         add($e2_t1,  $e2_t2),
-        double(2)
+        new_double(2)
       );
       
       my $e2_beta  = divide(
         subtract($e2_t1, $e2_t2),
-        double(2)
+        new_double(2)
       );
       
-      if (less_than($e2_alpha, double(1))) {
-        $e2_alpha = double(1);
+      if (less_than($e2_alpha, new_double(1))->value) {
+        $e2_alpha = new_double(1);
       }
       
-      if (more_than($e2_beta,double(1))) {
-        $e2_beta =  double(1);
+      if (more_than($e2_beta, new_double(1))->value) {
+        $e2_beta =  new_double(1);
       }
-      elsif (less_than($e2_beta, double(-1))) {
-        $e2_beta = double(-1);
+      elsif (less_than($e2_beta, new_double(-1))->value) {
+        $e2_beta = new_double(-1);
       }
       
       my $e2_u =  Rstats::VectorFunc::atan2(
         Rstats::VectorFunc::sqrt(
           subtract(
-            double(1),
+            new_double(1),
             multiply($e2_beta, $e2_beta)
           )
         ),
@@ -476,13 +463,13 @@ sub acos {
           Rstats::VectorFunc::sqrt(
             subtract(
               multiply($e2_alpha, $e2_alpha),
-              double(1)
+              new_double(1)
             )
           )
         )
       );
       
-      if (more_than($e1_im, double(0)) || (equal($e1_im, double(0)) && less_than($e1_re, double(-1)))) {
+      if (more_than($e1_im, new_double(0))->value || (equal($e1_im, new_double(0))->value && less_than($e1_re, new_double(-1))->value)) {
         $e2_v = negation($e2_v);
       }
       
@@ -490,20 +477,20 @@ sub acos {
     }
   }
   elsif ($e1->is_numeric || $e1->is_logical) {
-    if ($e1->is_infinite) {
+    if ($e1->is_infinite->value) {
       carp "In sin : NaNs produced";
       $e2 = NaN;
     }
-    elsif ($e1->is_nan) {
+    elsif ($e1->is_nan->value) {
       $e2 = $e1;
     }
     else {
       $e1 = $e1->as_double;
-      if (less_than_or_equal(Rstats::VectorFunc::abs($e1), double(1))) {
+      if (less_than_or_equal(Rstats::VectorFunc::abs($e1), new_double(1))->value) {
         $e2 = Rstats::VectorFunc::atan2(
           Rstats::VectorFunc::sqrt(
             subtract(
-              double(1),
+              new_double(1),
               multiply($e1, $e1)
             )
           ),
@@ -526,7 +513,7 @@ sub acos {
 sub asin {
   my $e1 = shift;
 
-  return $e1 if $e1->is_na;
+  return $e1 if $e1->is_na->value;
   
   my $e2;
   if ($e1->is_complex) {
@@ -534,15 +521,15 @@ sub asin {
     my $e1_re = Rstats::VectorFunc::new_double($e1->value->{re});
     my $e1_im = Rstats::VectorFunc::new_double($e1->value->{im});
     
-    if (equal($e1_re, double(0)) && equal($e1_im, double(0))) {
-      $e2 = complex(0, 0);
+    if (equal($e1_re, new_double(0))->value && equal($e1_im, new_double(0))->value) {
+      $e2 = new_complex({re => 0, im => 0});
     }
     else {
       my $e2_t1 = Rstats::VectorFunc::sqrt(
         add(
           multiply(
-            add($e1_re, double(1)),
-            add($e1_re, double(1))
+            add($e1_re, new_double(1)),
+            add($e1_re, new_double(1))
           ),
           multiply($e1_im, $e1_im)
         )
@@ -550,8 +537,8 @@ sub asin {
       my $e2_t2 = Rstats::VectorFunc::sqrt(
         add(
           multiply(
-            subtract($e1_re, double(1)),
-            subtract($e1_re, double(1))
+            subtract($e1_re, new_double(1)),
+            subtract($e1_re, new_double(1))
           ),
           multiply($e1_im, $e1_im)
         )
@@ -559,30 +546,30 @@ sub asin {
       
       my $e2_alpha = divide(
         add($e2_t1,  $e2_t2),
-        double(2)
+        new_double(2)
       );
       
       my $e2_beta  = divide(
         subtract($e2_t1, $e2_t2),
-        double(2)
+        new_double(2)
       );
       
-      if (less_than($e2_alpha, double(1))) {
-        $e2_alpha = double(1);
+      if (less_than($e2_alpha, new_double(1))->value) {
+        $e2_alpha = new_double(1);
       }
       
-      if (more_than($e2_beta,double(1))) {
-        $e2_beta =  double(1);
+      if (more_than($e2_beta, new_double(1))->value) {
+        $e2_beta =  new_double(1);
       }
-      elsif (less_than($e2_beta, double(-1))) {
-        $e2_beta = double(-1);
+      elsif (less_than($e2_beta, new_double(-1))->value) {
+        $e2_beta = new_double(-1);
       }
       
       my $e2_u =  Rstats::VectorFunc::atan2(
         $e2_beta,
         Rstats::VectorFunc::sqrt(
           subtract(
-            double(1),
+            new_double(1),
             multiply($e2_beta, $e2_beta)
           )
         )
@@ -595,14 +582,14 @@ sub asin {
             Rstats::VectorFunc::sqrt(
               subtract(
                 multiply($e2_alpha, $e2_alpha),
-                double(1)
+                new_double(1)
               )
             )
           )
         )
       );
       
-      if (more_than($e1_im, double(0)) || (equal($e1_im, double(0)) && less_than($e1_re, double(-1)))) {
+      if (more_than($e1_im, new_double(0))->value || (equal($e1_im, new_double(0))->value && less_than($e1_re, new_double(-1))->value)) {
         $e2_v = negation($e2_v);
       }
       
@@ -610,21 +597,21 @@ sub asin {
     }
   }
   elsif ($e1->is_numeric || $e1->is_logical) {
-    if ($e1->is_infinite) {
+    if ($e1->is_infinite->value) {
       carp "In sin : NaNs produced";
       $e2 = NaN;
     }
-    elsif ($e1->is_nan) {
+    elsif ($e1->is_nan->value) {
       $e2 = $e1;
     }
     else {
       $e1 = $e1->as_double;
-      if (less_than_or_equal(Rstats::VectorFunc::abs($e1), double(1))) {
+      if (less_than_or_equal(Rstats::VectorFunc::abs($e1), new_double(1))->value) {
         $e2 = Rstats::VectorFunc::atan2(
           $e1,
           Rstats::VectorFunc::sqrt(
             subtract(
-              double(1),
+              new_double(1),
               multiply($e1, $e1)
             )
           )
@@ -652,56 +639,46 @@ sub create {
     return character("$value");
   }
   elsif ($type eq 'complex') {
-    return complex($value, 0);
+    return new_complex({re => $value, im => 0});
   }
   elsif ($type eq 'double') {
-    return double($value);
+    return new_double($value);
   }
   elsif ($type eq 'integer') {
-    return integer($value);
+    return new_integer($value);
   }
   elsif ($type eq 'logical') {
-    return logical($value ? Rstats::VectorFunc::TRUE : Rstats::VectorFunc::FALSE);
+    return new_logical($value ? Rstats::VectorFunc::TRUE : Rstats::VectorFunc::FALSE);
   }
   else {
     croak 'Invalid type';
   }
 }
 
-sub negation {
+sub Mod { Rstats::VectorFunc::abs(@_) }
+
+sub Arg {
   my $e1 = shift;
   
-  if ($e1->is_na) {
-    return NA;
-  }
-  elsif ($e1->is_character) {
-    croak 'argument is not interpretable as logical'
-  }
-  elsif ($e1->is_complex) {
-    return complex(-$e1->value->{re}, -$e1->value->{im});
-  }
-  elsif ($e1->is_double) {
+  if ($e1->is_complex) {
+    my $e1_re = Rstats::VectorFunc::new_double($e1->value->{re});
+    my $e1_im = Rstats::VectorFunc::new_double($e1->value->{im});
+    my $re = $e1_re->value;
+    my $im = $e1_im->value;
     
-    my $flag = $e1->flag;
-    if (defined $e1->value) {
-      return double(-$e1->value);
+    my $e2;
+    if ($re == 0 && $im == 0) {
+      $e2 = new_double(0);
     }
-    elsif ($flag eq 'nan') {
-      return NaN;
+    else {
+      $e2 = new_double(CORE::atan2($im, $re));
     }
-    elsif ($flag eq 'inf') {
-      return negativeInf;
-    }
-    elsif ($flag eq '-inf') {
-      return Inf;
-    }
-  }
-  elsif ($e1->is_integer || $e1->is_logical) {
-    return integer(-$e1->value);
+    
+    return $e2;
   }
   else {
-    croak "Invalid type";
-  }  
+    croak "Not implemented";
+  }
 }
 
 =head1 NAME

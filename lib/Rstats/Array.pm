@@ -29,8 +29,6 @@ use overload
   '|' => sub { shift->operation('or', @_) },
   fallback => 1;
 
-has 'elements';
-
 sub to_string {
   my $self = shift;
   
@@ -45,7 +43,8 @@ sub to_string {
   
   my $is_character = $self->is_character;
 
-  my $elements = $self->decompose_elements;
+  my $values = $self->values;
+  my $type = $self->vector->type;
   
   my $dim_values = $self->dim_as_array->values;
   
@@ -54,13 +53,13 @@ sub to_string {
   my $poss = [];
   
   my $str;
-  if (@$elements) {
+  if (@$values) {
     if ($dim_length == 1) {
       my $names = $self->names->values;
       if (@$names) {
         $str .= join(' ', @$names) . "\n";
       }
-      my @parts = map { $self->_element_to_string($_, $is_character, $is_factor) } @$elements;
+      my @parts = map { $self->_value_to_string($_, $type, $is_factor) } @$values;
       $str .= '[1] ' . join(' ', @parts) . "\n";
     }
     elsif ($dim_length == 2) {
@@ -89,8 +88,8 @@ sub to_string {
         
         my @parts;
         for my $d2 (1 .. $dim_values->[1]) {
-          my $part = $self->element($d1, $d2);
-          push @parts, $self->_element_to_string($part, $is_character, $is_factor);
+          my $part = $self->value($d1, $d2);
+          push @parts, $self->_value_to_string($part, $type, $is_factor);
         }
         
         $str .= join(' ', @parts) . "\n";
@@ -137,8 +136,8 @@ sub to_string {
               
               my @parts;
               for my $d2 (1 .. $dim_values[1]) {
-                my $part = $self->element($d1, $d2, @$poss);
-                push @parts, $self->_element_to_string($part, $is_character, $is_factor);
+                my $part = $self->value($d1, $d2, @$poss);
+                push @parts, $self->_value_to_string($part, $type, $is_factor);
               }
               
               $str .= join(' ', @parts) . "\n";
@@ -169,34 +168,46 @@ sub to_string {
 sub is_finite {
   my $x1 = Rstats::Func::to_c(shift);
   
-  my @a2_elements = map { $_->is_finite } @{$x1->decompose_elements};
-  my $x2 = Rstats::Func::c(\@a2_elements);
-  $x1->_copy_attrs_to($x2);
-  $x2->mode('logical');
-  
-  return $x2;
+  if (my $vector = $x1->vector) {
+    my $x2 = Rstats::Func::NULL();
+    $x2->vector($x1->vector->is_finite);
+    $x1->copy_attrs_to($x2);
+    
+    return $x2;
+  }
+  else {
+    croak "Error : is_finite is not implemented except array";
+  }
 }
 
 sub is_infinite {
   my $x1 = Rstats::Func::to_c(shift);
   
-  my @a2_elements = map { $_->is_infinite } @{$x1->decompose_elements};
-  my $x2 = Rstats::Func::c(\@a2_elements);
-  $x1->_copy_attrs_to($x2);
-  $x2->mode('logical');
-  
-  return $x2;
+  if (my $vector = $x1->vector) {
+    my $x2 = Rstats::Func::NULL();
+    $x2->vector($x1->vector->is_infinite);
+    $x1->copy_attrs_to($x2);
+    
+    return $x2;
+  }
+  else {
+    croak "Error : is_infinite is not implemented except array";
+  }
 }
 
 sub is_nan {
   my $x1 = Rstats::Func::to_c(shift);
   
-  my @a2_elements = map { $_->is_nan } @{$x1->decompose_elements};
-  my $x2 = c(\@a2_elements);
-  $x1->_copy_attrs_to($x2);
-  $x2->mode('logical');
-  
-  return $x2;
+  if (my $vector = $x1->vector) {
+    my $x2 = Rstats::Func::NULL();
+    $x2->vector($x1->vector->is_nan);
+    $x1->copy_attrs_to($x2);
+    
+    return $x2;
+  }
+  else {
+    croak "Error : is_nan is not implemented except array";
+  }
 }
 
 sub is_null {
@@ -204,7 +215,7 @@ sub is_null {
   
   my @a2_elements = [!$x1->length_value ? Rstats::VectorFunc::TRUE() : Rstats::VectorFunc::FALSE()];
   my $x2 = Rstats::Func::c(\@a2_elements);
-  $x1->_copy_attrs_to($x1);
+  $x1->copy_attrs_to($x1);
   $x2->mode('logical');
   
   return $x2;
@@ -242,16 +253,17 @@ sub get {
   
   my ($poss, $x2_dim, $new_indexes) = Rstats::Util::parse_index($self, $dim_drop, @$_indexs);
   
-  my $self_elements = $self->decompose_elements;
-  my @a2_elements
-    = map { defined $self_elements->[$_] ? $self_elements->[$_] : Rstats::VectorFunc::NA() }
-      @$poss;
+  my $self_values = $self->values;
+  my @a2_values = map { $self_values->[$_] } @$poss;
   
   # array
-  my $x2 = Rstats::Func::array(\@a2_elements, $x2_dim);
+  my $x2 = Rstats::Func::array(
+    Rstats::Func::new_vector($self->vector->type, @a2_values),
+    $x2_dim
+  );
   
   # Copy attributes
-  $self->_copy_attrs_to($x2, {new_indexes => $new_indexes, exclude => ['dim']});
+  $self->copy_attrs_to($x2, {new_indexes => $new_indexes, exclude => ['dim']});
 
   # level drop
   if ($level_drop) {
@@ -267,7 +279,7 @@ sub _levels_h {
   my $levels_h = {};
   my $levels = $self->levels->values;
   for (my $i = 1; $i <= @$levels; $i++) {
-    $levels_h->{$levels->[$i - 1]} = Rstats::VectorFunc::integer($i);
+    $levels_h->{$levels->[$i - 1]} = Rstats::VectorFunc::new_integer($i);
   }
   
   return $levels_h;
@@ -279,27 +291,18 @@ sub set {
   
   my $at = $self->at;
   my $_indexs = ref $at eq 'ARRAY' ? $at : [$at];
-  
-  # Upgrade mode if type is different
-  if ($self->{type} ne $x2->{type}) {
-    my $self_tmp;
-    ($self_tmp, $x2) = Rstats::Func::upgrade_type($self, $x2);
-    $self_tmp->_copy_attrs_to($self);
-    $self->elements($self_tmp->elements);
-  }
-  
   my ($poss, $x2_dim) = Rstats::Util::parse_index($self, 0, @$_indexs);
   
-  my $self_elements = $self->decompose_elements;
-
+  my $self_elements;
   if ($self->is_factor) {
+    $self_elements = $self->decompose_elements;
     $x2 = $x2->as_character unless $x2->is_character;
     my $x2_elements = $x2->decompose_elements;
     my $levels_h = $self->_levels_h;
     for (my $i = 0; $i < @$poss; $i++) {
       my $pos = $poss->[$i];
       my $element = $x2_elements->[(($i + 1) % @$poss) - 1];
-      if ($element->is_na) {
+      if ($element->is_na->value) {
         $self_elements->[$pos] = Rstats::VectorFunc::NA();
       }
       else {
@@ -315,6 +318,16 @@ sub set {
     }
   }
   else {
+    # Upgrade mode if type is different
+    if ($self->vector->type ne $x2->vector->type) {
+      my $self_tmp;
+      ($self_tmp, $x2) = Rstats::Func::upgrade_type($self, $x2);
+      $self_tmp->copy_attrs_to($self);
+      $self->vector($self_tmp->vector);
+    }
+
+    $self_elements = $self->decompose_elements;
+
     my $x2_elements = $x2->decompose_elements;
     for (my $i = 0; $i < @$poss; $i++) {
       my $pos = $poss->[$i];
@@ -322,7 +335,7 @@ sub set {
     }
   }
   
-  $self->elements(Rstats::Vector->compose($self->{type}, $self_elements));
+  $self->vector(Rstats::Vector->compose($self->vector->type, $self_elements));
   
   return $self;
 }
@@ -338,12 +351,39 @@ sub bool {
     carp 'In if (a) { : the condition has length > 1 and only the first element will be used';
   }
   
-  my $element = $self->element;
+  my $element = $self->vector_part;
+
+  my $is;
+  if ($element->is_character || $element->is_complex) {
+    croak 'Error in -a : invalid argument to unary operator ';
+  }
+  elsif ($element->is_double) {
+    if ($element->is_infinite->value) {
+      $is = 1;
+    }
+    elsif ($element->is_nan->value) {
+      croak 'argument is not interpretable as logical';
+    }
+    else {
+      $is = $element->value;
+    }
+  }
+  elsif ($element->is_integer || $element->is_logical) {
+    $is = $element->value;
+  }
+  else {
+    croak "Invalid type";
+  }
   
-  return !!$element;
+  my $is_na = $element->is_na->value;
+  if ($is_na) {
+    croak "Error in bool context (a) { : missing value where TRUE/FALSE needed"
+  }
+
+  return $is;
 }
 
-sub element {
+sub vector_part {
   my $self = shift;
 
   my $dim_values = $self->dim_as_array->values;

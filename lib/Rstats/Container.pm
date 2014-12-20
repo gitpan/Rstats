@@ -6,6 +6,9 @@ use Rstats::List;
 use Carp 'croak';
 use Rstats::Vector;
 
+has list => sub { [] };
+has 'vector';
+
 sub is_perl_array_class {
   my $self  = shift;
   
@@ -28,7 +31,7 @@ sub decompose_elements {
   my $self = shift;
   
   if ($self->is_perl_array_class) {
-    return $self->elements->decompose;
+    return $self->vector->decompose;
   }
   else {
     croak "Can't call decompose_elements methods from list";
@@ -37,7 +40,7 @@ sub decompose_elements {
 
 my %types_h = map { $_ => 1 } qw/character complex numeric double integer logical/;
 
-sub _copy_attrs_to {
+sub copy_attrs_to {
   my ($self, $x2, $opt) = @_;
   
   $opt ||= {};
@@ -46,30 +49,28 @@ sub _copy_attrs_to {
   my %exclude_h = map { $_ => 1 } @$exclude;
   
   # dim
-  $x2->{dim} = [@{$self->{dim}}] if !$exclude_h{dim} && exists $self->{dim};
+  $x2->{dim} = $self->{dim}->clone if !$exclude_h{dim} && exists $self->{dim};
   
   # class
-  $x2->{class} =  [@{$self->{class}}] if !$exclude_h{class} && exists $self->{class};
-
-  # levels
-  $x2->{levels} = $self->{levels} if !$exclude_h{levels} && exists $self->{levels};
+  $x2->{class} =  $self->{class}->clone if !$exclude_h{class} && exists $self->{class};
   
-  # type
-  $x2->{type} = $self->{type} if !$exclude_h{type} && exists $self->{type};
+  # levels
+  $x2->{levels} = $self->{levels}->clone if !$exclude_h{levels} && exists $self->{levels};
   
   # names
   if (!$exclude_h{names} && exists $self->{names}) {
-    my $names = [];
+    my $x2_names_values = [];
     my $index = $self->is_data_frame ? $new_indexes->[1] : $new_indexes->[0];
     if (defined $index) {
+      my $self_names_values = $self->{names}->values;
       for my $i (@{$index->values}) {
-        push @$names, $self->{names}[$i - 1];
+        push @$x2_names_values, $self_names_values->[$i - 1];
       }
     }
     else {
-      $names = [@{$self->{names}}];
+      $x2_names_values = $self->{names}->values;
     }
-    $x2->{names} = $names;
+    $x2->{names} = Rstats::VectorFunc::new_character(@$x2_names_values);
   }
   
   # dimnames
@@ -79,42 +80,56 @@ sub _copy_attrs_to {
     my $length = @$dimnames;
     for (my $i = 0; $i < $length; $i++) {
       my $dimname = $dimnames->[$i];
-      if (defined $dimname && @$dimname) {
+      if (defined $dimname && $dimname->length_value) {
         my $index = $new_indexes->[$i];
-        my $new_dimname = [];
+        my $dimname_values = $dimname->values;
+        my $new_dimname_values = [];
         if (defined $index) {
           for my $k (@{$index->values}) {
-            push @$new_dimname, $dimname->[$k - 1];
+            push @$new_dimname_values, $dimname_values->[$k - 1];
           }
         }
         else {
-          $new_dimname = [@$dimname];
+          $new_dimname_values = $dimname_values;
         }
-        push @$new_dimnames, $new_dimname;
+        push @$new_dimnames, Rstats::VectorFunc::new_character(@$new_dimname_values);
       }
     }
     $x2->{dimnames} = $new_dimnames;
   }
 }
 
-sub _element_to_string {
-  my ($self, $element, $is_character, $is_factor) = @_;
+sub _value_to_string {
+  my ($self, $value, $type, $is_factor) = @_;
   
   my $string;
   if ($is_factor) {
-    if ($element->is_na) {
+    if (!defined $value) {
       $string = '<NA>';
     }
     else {
-      $string = "$element";
+      $string = "$value";
     }
   }
   else {
-    if ($is_character) {
-      $string = '"' . $element . '"';
+    if (!defined $value) {
+      $string = 'NA';
+    }
+    elsif ($type eq 'complex') {
+      my $re = $value->{re} || 0;
+      my $im = $value->{im} || 0;
+      $string = "$re";
+      $string .= $im > 0 ? "+$im" : $im;
+      $string .= 'i';
+    }
+    elsif ($type eq 'character') {
+      $string = '"' . $value . '"';
+    }
+    elsif ($type eq 'logical') {
+      $string = $value ? 'TRUE' : 'FALSE';
     }
     else {
-      $string = "$element";
+      $string = "$value";
     }
   }
   
@@ -128,7 +143,7 @@ sub str {
   
   if ($self->is_vector || $self->is_array) {
     # Short type
-    my $type = $self->{type};
+    my $type = $self->vector->type;
     my $short_type;
     if ($type eq 'character') {
       $short_type = 'chr';
@@ -154,17 +169,18 @@ sub str {
     my @dim_str;
     my $length = $self->length_value;
     if (exists $self->{dim}) {
-      for (my $i = 0; $i < @{$self->{dim}}; $i++) {
-        my $d = $self->{dim}[$i];
+      my $dim_values = $self->{dim}->values;
+      for (my $i = 0; $i < $self->{dim}->length_value; $i++) {
+        my $d = $dim_values->[$i];
         my $d_str;
         if ($d == 1) {
           $d_str = "1";
         }
         else {
-          $d_str = "1:$d"
+          $d_str = "1:$d";
         }
         
-        if (@{$self->{dim}} == 1) {
+        if ($self->{dim}->length_value == 1) {
           $d_str .= "(" . ($i + 1) . "d)";
         }
         push @dim_str, $d_str;
@@ -184,9 +200,9 @@ sub str {
     my @element_str;
     my $max_count = $length > 10 ? 10 : $length;
     my $is_character = $self->is_character;
-    my $elements = $self->decompose_elements;
+    my $values = $self->values;
     for (my $i = 0; $i < $max_count; $i++) {
-      push @element_str, $self->_element_to_string($elements->[$i], $is_character);
+      push @element_str, $self->_value_to_string($values->[$i], $type);
     }
     if ($length > 10) {
       push @element_str, '...';
@@ -204,23 +220,29 @@ sub levels {
   my $self = shift;
   
   if (@_) {
-    my $x1_levels = Rstats::Func::to_c(shift);
-    $x1_levels = $x1_levels->as_character unless $x1_levels->is_character;
+    my $x_levels = Rstats::Func::to_c(shift);
+    $x_levels = $x_levels->as_character unless $x_levels->is_character;
     
-    $self->{levels} = $x1_levels->values;
+    $self->{levels} = $x_levels->vector->clone;
     
     return $self;
   }
   else {
-    return exists $self->{levels} ? Rstats::Func::c($self->{levels}) : Rstats::Func::NULL();
+    my $x_levels = Rstats::Func::NULL();
+    if (exists $self->{levels}) {
+      $x_levels->vector($self->{levels}->clone);
+    }
+    
+    return $x_levels;
   }
 }
 
 sub clone {
-  my ($self, %opt) = @_;
+  my $self = shift;;
   
-  my $clone = Rstats::Func::c($opt{elements} || $self->decompose_elements);
-  $self->_copy_attrs_to($clone);
+  my $clone = Rstats::Func::NULL();
+  $clone->vector($self->vector->clone);
+  $self->copy_attrs_to($clone);
   
   return $clone;
 }
@@ -241,13 +263,13 @@ sub _name_to_index {
   my $self = shift;
   my $x1_index = Rstats::Func::to_c(shift);
   
-  my $e1_name = $x1_index->element;
+  my $e1_name = $x1_index->value;
   my $found;
-  my $names = $self->names->decompose_elements;
+  my $names = $self->names->values;
   my $index;
   for (my $i = 0; $i < @$names; $i++) {
     my $name = $names->[$i];
-    if (Rstats::VectorFunc::equal($e1_name, $name)) {
+    if ($e1_name eq $name) {
       $index = $i + 1;
       $found = 1;
       last;
@@ -277,7 +299,7 @@ sub length_value {
   
   my $length;
   if ($self->is_perl_array_class) {
-    $length = $self->elements->length_value;
+    $length = $self->vector->length_value;
   }
   else {
     $length = @{$self->list}
@@ -290,12 +312,9 @@ sub is_na {
   my $_a1 = shift;
   
   my $x1 = Rstats::Func::to_c($_a1);
-  
-  my @a2_elements = map {
-    ref $_ eq  'Rstats::Type::NA' ? Rstats::VectorFunc::TRUE() : Rstats::VectorFunc::FALSE()
-  } @{$x1->decompose_elements};
-  my $x2 = Rstats::Func::array(\@a2_elements);
-  $x2->mode('logical');
+  my $x2_values = [map { !defined $_ ? 1 : 0 } @{$x1->values}];
+  my $x2 = Rstats::Func::NULL();
+  $x2->vector(Rstats::VectorFunc::new_logical(@$x2_values));
   
   return $x2;
 }
@@ -308,7 +327,9 @@ sub as_list {
   }
   else {
     my $list = Rstats::List->new;
-    $list->list([Rstats::Func::c($self->decompose_elements)]);
+    my $x2 = Rstats::Func::NULL();
+    $x2->vector($self->vector->clone);
+    $list->list([$x2]);
     
     return $list;
   }
@@ -326,32 +347,32 @@ sub class {
   if (@_) {
     my $x_class = Rstats::Func::to_c($_[0]);
     
-    $self->{class} = $x_class->values;
+    $self->{class} = $x_class->vector;
     
     return $self;
   }
   else {
+    my $x_class = Rstats::Func::NULL();
     if (exists $self->{class}) {
-      return Rstats::Func::c($self->{class});
+      $x_class->vector($self->{class}->clone);
     }
     elsif ($self->is_vector) {
-      return Rstats::Func::c($self->mode);
+      $x_class->vector($self->mode->vector->clone);
     }
     elsif ($self->is_matrix) {
-      return Rstats::Func::c('matrix');
+      $x_class->vector(Rstats::VectorFunc::new_character('matrix'));
     }
     elsif ($self->is_array) {
-      return Rstats::Func::c('array');
+      $x_class->vector(Rstats::VectorFunc::new_character('array'));
     }
     elsif ($self->is_data_frame) {
-      return Rstats::Func::c('data.frame');
+      $x_class->vector(Rstats::VectorFunc::new_character('data.frame'));
     }
     elsif ($self->is_list) {
-      return Rstats::Func::c('list');
+      $x_class->vector(Rstats::VectorFunc::new_character('list'));
     }
-    else {
-      Rstats::Func::NULL()
-    }
+    
+    return $x_class;
   }
 }
 
@@ -380,12 +401,17 @@ sub dim {
       croak "dims [product $self_lenght_by_dim] do not match the length of object [$self_length]";
     }
   
-    $self->{dim} = $x_dim->values;
+    $self->{dim} = $x_dim->vector->clone;
     
     return $self;
   }
   else {
-    return defined $self->{dim} ? Rstats::Func::c($self->{dim}) : Rstats::Func::NULL();
+    my $x_dim = Rstats::Func::NULL();
+    if (defined $self->{dim}) {
+      $x_dim->vector($self->{dim}->clone);
+    }
+    
+    return $x_dim;
   }
 }
 
@@ -397,17 +423,12 @@ sub mode {
     croak qq/Error in eval(expr, envir, enclos) : could not find function "as_$type"/
       unless $types_h{$type};
     
-    if ($type eq 'numeric') {
-      $self->{type} = 'double';
-    }
-    else {
-      $self->{type} = $type;
-    }
+    $self->vector($self->vector->as($type));
     
     return $self;
   }
   else {
-    my $type = $self->{type};
+    my $type = $self->vector->type;
     my $mode;
     if (defined $type) {
       if ($type eq 'integer' || $type eq 'double') {
@@ -428,24 +449,20 @@ sub mode {
 sub typeof {
   my $self = shift;
   
-  my $type = $self->{type};
-  my $x2_elements = defined $type ? $type : "NULL";
-  my $x2 = Rstats::Func::c($x2_elements);
-  
-  return $x2;
+  if ($self->is_vector || $self->is_array) {
+    my $type = $self->vector->type;
+    return Rstats::Func::new_character($type);
+  }
+  elsif ($self->is_list) {
+    return Rstats::Func::new_character('list');
+  }
+  else {
+    return Rstats::Func::NA();
+  }
 }
 
 sub type {
-  my $self = shift;
-  
-  if (@_) {
-    $self->{type} = $_[0];
-    
-    return $self;
-  }
-  else {
-    return $self->{type};
-  }
+  return shift->vector->type;
 }
 
 sub is_factor {
@@ -500,26 +517,33 @@ sub as_matrix {
     $col = 1;
   }
   
-  my $x2_elements = [@{$self->decompose_elements}];
+  my $x2 = Rstats::Func::NULL();
+  my $x2_vector = $self->vector->clone;
+  $x2->vector($x2_vector);
   
-  return Rstats::Func::matrix($x2_elements, $row, $col);
+  return Rstats::Func::matrix($x2, $row, $col);
 }
 
 sub as_array {
   my $self = shift;
-  
-  my $self_elements = [@{$self->decompose_elements}];
+
+  my $x2 = Rstats::Func::NULL();
+  my $x2_vector = $self->vector->clone;
+  $x2->vector($x2_vector);
+
   my $self_dim_elements = [@{$self->dim_as_array->values}];
   
-  return $self->array($self_elements, $self_dim_elements);
+  return $self->array($x2, $self_dim_elements);
 }
 
 sub as_vector {
   my $self = shift;
   
-  my $self_elements = [@{$self->decompose_elements}];
+  my $x2 = Rstats::Func::NULL();
+  my $x2_vector = $self->vector->clone;
+  $x2->vector($x2_vector);
   
-  return Rstats::Func::c($self_elements);
+  return $x2;
 }
 
 sub as {
@@ -560,11 +584,8 @@ sub as_complex {
   }
 
   my $x2;
-  my $x_tmp_elements = $x_tmp->decompose_elements;
-  my @a2_elements = map { $_->as('complex') } @$x_tmp_elements;
-  $x2 = Rstats::Func::c(\@a2_elements);
-  $x_tmp->_copy_attrs_to($x2);
-  $x2->{type} = 'complex';
+  $x2 = Rstats::Array->new->vector($x_tmp->vector->as_complex);
+  $x_tmp->copy_attrs_to($x2);
 
   return $x2;
 }
@@ -576,16 +597,11 @@ sub as_double {
   
   my $x2;
   if ($self->is_factor) {
-    my $x2_elements = [map { $_->as_double } @{$self->decompose_elements}];
-    $x2 = Rstats::Func::c($x2_elements);
-    $x2->{type} = 'double';
+    $x2 = Rstats::Array->new->vector($self->vector->as_double);
   }
   else {
-    my $self_elements = $self->decompose_elements;
-    my @a2_elements = map { $_->as('double') } @$self_elements;
-    $x2 = Rstats::Func::c(\@a2_elements);
-    $self->_copy_attrs_to($x2);
-    $x2->{type} = 'double';
+    $x2 = Rstats::Array->new->vector($self->vector->as_double);
+    $self->copy_attrs_to($x2);
   }
 
   return $x2;
@@ -596,15 +612,11 @@ sub as_integer {
   
   my $x2;
   if ($self->is_factor) {
-    $x2 = Rstats::Func::c($self->decompose_elements);
-    $x2->{type} = 'integer';
+    $x2 = Rstats::Array->new->vector($self->vector->as_integer);
   }
   else {
-   my $self_elements = $self->decompose_elements;
-    my @a2_elements = map { $_->as_integer  } @$self_elements;
-    $x2 = Rstats::Func::c(\@a2_elements);
-    $self->_copy_attrs_to($x2);
-    $x2->{type} = 'integer';
+    $x2 = Rstats::Array->new->vector($self->vector->as_integer);
+    $self->copy_attrs_to($x2);
   }
 
   return $x2;
@@ -615,15 +627,11 @@ sub as_logical {
   
   my $x2;
   if ($self->is_factor) {
-    $x2 = Rstats::Func::c($self->decompose_elements);
-    $x2 = $x2->as_logical;
+    $x2 = Rstats::Array->new->vector($self->vector->as_logical);
   }
   else {
-    my $self_elements = $self->decompose_elements;
-    my @a2_elements = map { $_->as_logical } @$self_elements;
-    $x2 = Rstats::Func::c(\@a2_elements);
-    $self->_copy_attrs_to($x2);
-    $x2->{type} = 'logical';
+    $x2 = Rstats::Array->new->vector($self->vector->as_logical);
+    $self->copy_attrs_to($x2);
   }
 
   return $x2;
@@ -638,35 +646,31 @@ sub as_character {
   if ($self->is_factor) {
     my $levels = {};
     my $x_levels = $self->levels;
-    my $x_levels_elements = $x_levels->decompose_elements;
-    my $levels_length = $x_levels->length->value;
+    my $x_levels_values = $x_levels->values;
+    my $levels_length = $x_levels->length_value;
     for (my $i = 1; $i <= $levels_length; $i++) {
-      my $x_levels_element = $x_levels_elements->[$i - 1];
-      $levels->{$i} = $x_levels_element->value;
+      $levels->{$i} = $x_levels_values->[$i - 1];
     }
 
-    my $self_elements =  $self->decompose_elements;
-    my $x2_elements = [];
-    for my $self_element (@$self_elements) {
-      if ($self_element->is_na) {
-        push @$x2_elements, Rstats::Func::NA();
+    my $self_values = $self->values;
+    my $x2_values = [];
+    for my $self_value (@$self_values) {
+      if (defined $self_value) {
+        my $character = $levels->{$self_value};
+        push @$x2_values, "$character";
       }
       else {
-        my $value = $self_element->value;
-        my $character = $levels->{$value};
-        push @$x2_elements, "$character";
+        push @$x2_values, undef;
       }
     }
-    $x2 = Rstats::Func::c($x2_elements);
-    $self->_copy_attrs_to($x2)
+    $x2 = Rstats::Func::NULL();
+    $x2->vector(Rstats::VectorFunc::new_character(@$x2_values));
+    
+    $self->copy_attrs_to($x2)
   }
   else {
-    my $self_elements = $self->decompose_elements;
-    my @a2_elements = map { $_->as_character } @$self_elements;
-    $x2 = Rstats::Func::c(\@a2_elements);
-    $self->_copy_attrs_to($x2);
-    
-    $x2->{type} = 'character';
+    $x2 = Rstats::Array->new->vector($self->vector->as_character);
+    $self->copy_attrs_to($x2);
   }
 
   return $x2;
@@ -676,10 +680,10 @@ sub values {
   my $self = shift;
   
   if (@_) {
-    $self->elements(Rstats::Func::c($_[0])->elements);
+    $self->vector(Rstats::Func::c($_[0])->vector);
   }
   else {
-    my $values = $self->elements->values;
+    my $values = $self->vector->values;
     
     return $values;
   }
@@ -688,7 +692,7 @@ sub values {
 sub value {
   my $self = shift;
   
-  my $e1 = $self->element(@_);
+  my $e1 = $self->vector_part(@_);
   
   return defined $e1 ? $e1->value : undef;
 }
@@ -712,7 +716,7 @@ sub is_matrix {
 sub is_numeric {
   my $self = shift;
   
-  my $is = ($self->{type} || '') eq 'double' || ($self->{type} || '') eq 'integer'
+  my $is = ($self->is_array || $self->is_vector) && (($self->vector->type || '') eq 'double' || ($self->vector->type || '') eq 'integer')
     ? Rstats::VectorFunc::TRUE() : Rstats::VectorFunc::FALSE();
   
   return Rstats::Func::c($is);
@@ -721,7 +725,8 @@ sub is_numeric {
 sub is_double {
   my $self = shift;
   
-  my $is = ($self->{type} || '') eq 'double' ? Rstats::VectorFunc::TRUE() : Rstats::VectorFunc::FALSE();
+  my $is = ($self->is_array || $self->is_vector) && ($self->vector->type || '') eq 'double'
+    ? Rstats::VectorFunc::TRUE() : Rstats::VectorFunc::FALSE();
   
   return Rstats::Func::c($is);
 }
@@ -729,7 +734,8 @@ sub is_double {
 sub is_integer {
   my $self = shift;
   
-  my $is = ($self->{type} || '') eq 'integer' ? Rstats::VectorFunc::TRUE() : Rstats::VectorFunc::FALSE();
+  my $is = ($self->is_array || $self->is_vector) && ($self->vector->type || '') eq 'integer'
+    ? Rstats::VectorFunc::TRUE() : Rstats::VectorFunc::FALSE();
   
   return Rstats::Func::c($is);
 }
@@ -737,7 +743,8 @@ sub is_integer {
 sub is_complex {
   my $self = shift;
   
-  my $is = ($self->{type} || '') eq 'complex' ? Rstats::VectorFunc::TRUE() : Rstats::VectorFunc::FALSE();
+  my $is = ($self->is_array || $self->is_vector) && ($self->vector->type || '') eq 'complex'
+    ? Rstats::VectorFunc::TRUE() : Rstats::VectorFunc::FALSE();
   
   return Rstats::Func::c($is);
 }
@@ -745,7 +752,8 @@ sub is_complex {
 sub is_character {
   my $self = shift;
   
-  my $is = ($self->{type} || '') eq 'character' ? Rstats::VectorFunc::TRUE() : Rstats::VectorFunc::FALSE();
+  my $is = ($self->is_array || $self->is_vector) && ($self->vector->type || '') eq 'character'
+    ? Rstats::VectorFunc::TRUE() : Rstats::VectorFunc::FALSE();
   
   return Rstats::Func::c($is);
 }
@@ -753,7 +761,8 @@ sub is_character {
 sub is_logical {
   my $self = shift;
   
-  my $is = ($self->{type} || '') eq 'logical' ? Rstats::VectorFunc::TRUE() : Rstats::VectorFunc::FALSE();
+  my $is = ($self->is_array || $self->is_vector) && ($self->vector->type || '') eq 'logical'
+    ? Rstats::VectorFunc::TRUE() : Rstats::VectorFunc::FALSE();
   
   return Rstats::Func::c($is);
 }
@@ -779,21 +788,20 @@ sub names {
     my $names = Rstats::Func::to_c(shift);
     
     $names = $names->as_character unless $names->is_character;
-    $self->{names} = $names->values;
+    $self->{names} = $names->vector->clone;
     
     if ($self->is_data_frame) {
-      $self->{dimnames}->[1] =[@$self->{names}];
+      $self->{dimnames}[1] = $self->{names}->vector->clone;
     }
     
     return $self;
   }
   else {
+    my $x_names = Rstats::Func::NULL();
     if (exists $self->{names}) {
-      return Rstats::Func::c($self->{names});
+      $x_names->vector($self->{names}->clone);
     }
-    else {
-      return Rstats::Func::NULL();
-    }
+    return $x_names;
   }
 }
 
@@ -808,7 +816,7 @@ sub dimnames {
       for (my $i = 0; $i < $length; $i++) {
         my $x_dimname = $dimnames_list->getin($i + 1);
         if ($x_dimname->is_character) {
-          my $dimname = $x_dimname->values;
+          my $dimname = $x_dimname->vector->clone;
           push @$dimnames, $dimname;
         }
         else {
@@ -818,7 +826,7 @@ sub dimnames {
       $self->{dimnames} = $dimnames;
       
       if ($self->is_data_frame) {
-        $self->{names} = [@{$self->{dimnames}->[1]}];
+        $self->{names} = $self->{dimnames}[1]->clone;
       }
     }
     else {
@@ -827,7 +835,8 @@ sub dimnames {
   }
   else {
     if (exists $self->{dimnames}) {
-      return Rstats::Func::list(@{$self->{dimnames}});
+      my $x_dimnames = Rstats::Func::list();
+      $x_dimnames->list($self->{dimnames});
     }
     else {
       return Rstats::Func::NULL();
@@ -839,45 +848,42 @@ sub rownames {
   my $self = shift;
   
   if (@_) {
-    my $rownames = Rstats::Func::to_c(shift);
+    my $x_rownames = Rstats::Func::to_c(shift);
     
-    if (exists $self->{dimnames}) {
-      $self->{dimnames}->[0] = [@{$rownames->values}];
+    unless (exists $self->{dimnames}) {
+      $self->{dimnames} = [];
     }
-    else {
-      $self->{dimnames} = [[@{$rownames->values}], []];
-    }
+    
+    $self->{dimnames}[0] = $x_rownames->vector->clone;
   }
   else {
-    if (exists $self->{dimnames}) {
-      return Rstats::Func::c($self->{dimnames}[0]);
+    my $x_rownames = Rstats::Func::NULL();
+    if (defined $self->{dimnames}[0]) {
+      $x_rownames->vector($self->{dimnames}[0]->clone);
     }
-    else {
-      return Rstats::Func::NULL()
-    }
+    return $x_rownames;
   }
 }
+
 
 sub colnames {
   my $self = shift;
   
   if (@_) {
-    my $colnames = Rstats::Func::to_c(shift);
+    my $x_colnames = Rstats::Func::to_c(shift);
     
-    if (exists $self->{dimnames}) {
-      $self->{dimnames}->[1] = [@{$colnames->values}];
+    unless (exists $self->{dimnames}) {
+      $self->{dimnames} = [];
     }
-    else {
-      $self->{dimnames} = [[], [@{$colnames->values}]];
-    }
+    
+    $self->{dimnames}[1] = $x_colnames->vector->clone;
   }
   else {
-    if (exists $self->{dimnames}) {
-      return Rstats::Func::c($self->{dimnames}[1]);
+    my $x_colnames = Rstats::Func::NULL();
+    if (defined $self->{dimnames}[1]) {
+      $x_colnames->vector($self->{dimnames}[1]->clone);
     }
-    else {
-      return Rstats::Func::NULL()
-    }
+    return $x_colnames;
   }
 }
 

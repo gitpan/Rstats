@@ -36,19 +36,19 @@ my $x1 = c(1, 2, 3);
     {
       my $e1 = Rstats::VectorFunc::new_nan();
       is($e1->type, 'double');
-      ok(!$e1->is_finite);
+      ok(!$e1->is_finite->value);
     }
 
     # element - is_finite - Inf
     {
       my $e1 = Rstats::VectorFunc::new_inf();
-      ok(!$e1->is_finite);
+      ok(!$e1->is_finite->value);
     }
 
     # element - is_finite - -Inf
     {
       my $e1 = Rstats::VectorFunc::new_negative_inf();
-      ok(!$e1->is_finite);
+      ok(!$e1->is_finite->value);
     }
   }
   
@@ -63,7 +63,7 @@ my $x1 = c(1, 2, 3);
   {
     my $e1 = Rstats::VectorFunc::new_inf();
     is($e1->type, 'double');
-    ok($e1->is_infinite);
+    ok($e1->is_infinite->value);
     ok($e1->value > 0);
   }
   
@@ -71,7 +71,7 @@ my $x1 = c(1, 2, 3);
   {
     my $e1 = Rstats::VectorFunc::new_negative_inf();
     is($e1->type, 'double');
-    ok($e1->is_infinite);
+    ok($e1->is_infinite->value);
     ok($e1->value < 0);
   }
 
@@ -105,7 +105,7 @@ my $x1 = c(1, 2, 3);
   
   # element - complex_xs
   {
-    my $e1 = Rstats::VectorFunc::new_complex(1.5, 2.5);
+    my $e1 = Rstats::VectorFunc::new_complex({re => 1.5, im => 2.5});
     is($e1->type, 'complex');
     is($e1->value->{re}, 1.5);
     is($e1->value->{im}, 2.5);

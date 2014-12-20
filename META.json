@@ -4,7 +4,7 @@
       "Yuki Kimoto <kimoto.yuki@gmail.com>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "ExtUtils::MakeMaker version 6.98, CPAN::Meta::Converter version 2.142690",
+   "generated_by" : "ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.112150",
    "license" : [
       "perl_5"
    ],
@@ -22,12 +22,12 @@
    "prereqs" : {
       "build" : {
          "requires" : {
-            "ExtUtils::MakeMaker" : "0"
+            "ExtUtils::MakeMaker" : 0
          }
       },
       "configure" : {
          "requires" : {
-            "ExtUtils::MakeMaker" : "0"
+            "ExtUtils::MakeMaker" : 0
          }
       },
       "runtime" : {
@@ -51,5 +51,5 @@
          "url" : "https://github.com/yuki-kimoto/Rstats.git"
       }
    },
-   "version" : "0.0128"
+   "version" : "0.0129"
 }

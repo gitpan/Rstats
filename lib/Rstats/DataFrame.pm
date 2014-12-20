@@ -29,13 +29,14 @@ sub get {
   }
   elsif ($col_index->is_character) {
     $col_index_values = [];
-    for my $element (@{$col_index->decompose_elements}) {
-      push @$col_index_values, $self->_name_to_index($element);
+    for my $col_index_value (@{$col_index->values}) {
+      push @$col_index_values, $self->_name_to_index($col_index_value);
     }
   }
   elsif ($col_index->is_logical) {
-    for (my $i = 0; $i < @{$col_index->values}; $i++) {
-      push @$col_index_values, $i + 1 if $col_index->decompose_elements->[$i];
+    my $tmp_col_index_values = $col_index->values;
+    for (my $i = 0; $i < @$tmp_col_index_values; $i++) {
+      push @$col_index_values, $i + 1 if $tmp_col_index_values->[$i];
     }
   }
   else {
@@ -73,8 +74,8 @@ sub get {
   # Create new data frame
   my $data_frame = Rstats::DataFrame->new;
   $data_frame->list($new_elements);
-  $self->_copy_attrs_to($data_frame, {new_indexes => [$row_index, Rstats::Func::c($col_index_values)]});
-  $data_frame->{dimnames}[0] = [1 .. $data_frame->getin(1)->length_value];
+  $self->copy_attrs_to($data_frame, {new_indexes => [$row_index, Rstats::Func::c($col_index_values)]});
+  $data_frame->{dimnames}[0] = Rstats::VectorFunc::new_character(1 .. $data_frame->getin(1)->length_value);
   
   return $data_frame;
 }
@@ -93,7 +94,7 @@ sub to_string {
   for (my $i = 1; $i <= @$column_names; $i++) {
     my $x = $self->getin($i);
     $x = $x->as_character if $x->is_factor;
-    push @$columns, $x->decompose_elements;
+    push @$columns, $x->values;
   }
   my $col_count = @{$columns};
   my $row_count = @{$columns->[0]};

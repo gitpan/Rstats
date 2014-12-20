@@ -36,106 +36,32 @@ SV* values(...)
   PPCODE:
 {
   Rstats::Vector* self = my::to_c_obj<Rstats::Vector*>(ST(0));
-  
-  IV length = self->get_length();
-  SV* sv_values = my::new_mAVRV();
-  if (self->is_character()) {
-    for (IV i = 0; i < length; i++) {
-      if (self->exists_na_position(i)) {
-        my::avrv_push_inc(sv_values, &PL_sv_undef);
-      }
-      else {
-        my::avrv_push_inc(sv_values, self->get_character_value(i));
-      }
-    }
-  }
-  else if (self->is_complex()) {
-    for (IV i = 0; i < length; i++) {
-      if (self->exists_na_position(i)) {
-        my::avrv_push_inc(sv_values, &PL_sv_undef);
-      }
-      else {
-        SV* sv_z = my::new_mHVRV();
-        std::complex<NV> z = self->get_complex_value(i);
-        
-        NV re = z.real();
-        SV* sv_re;
-        if (std::isnan(re)) {
-          sv_re = my::new_mSVpv_nolen("NaN");
-        }
-        else if (std::isinf(re) && re > 0) {
-          sv_re = my::new_mSVpv_nolen("Inf");
-        }
-        else if (std::isinf(re) && re < 0) {
-          sv_re = my::new_mSVpv_nolen("-Inf");
-        }
-        else {
-          sv_re = my::new_mSVnv(re);
-        }
-        
-        NV im = z.imag();
-        SV* sv_im;
-        if (std::isnan(im)) {
-          sv_im = my::new_mSVpv_nolen("NaN");
-        }
-        else if (std::isinf(im) && im > 0) {
-          sv_im = my::new_mSVpv_nolen("Inf");
-        }
-        else if (std::isinf(im) && im < 0) {
-          sv_im = my::new_mSVpv_nolen("-Inf");
-        }
-        else {
-          sv_im = my::new_mSVnv(im);
-        }
+  SV* sv_values = self->get_values();
+  return_sv(sv_values);
+}
 
-        my::hvrv_store_nolen_inc(sv_z, "re", sv_re);
-        my::hvrv_store_nolen_inc(sv_z, "im", sv_im);
-        
-        my::avrv_push_inc(sv_values, sv_z);
-      }
-    }
-  }
-  else if (self->is_double()) {
-    for (IV i = 0; i < length; i++) {
-      if (self->exists_na_position(i)) {
-        my::avrv_push_inc(sv_values, &PL_sv_undef);
-      }
-      else {
-        NV value = self->get_double_value(i);
-        SV* sv_value;
-        if (std::isnan(value)) {
-          sv_value = my::new_mSVpv_nolen("NaN");
-        }
-        else if (std::isinf(value) && value > 0) {
-          sv_value = my::new_mSVpv_nolen("Inf");
-        }
-        else if (std::isinf(value) && value < 0) {
-          sv_value = my::new_mSVpv_nolen("-Inf");
-        }
-        else {
-          sv_value = my::new_mSVnv(value);
-        }
-        my::avrv_push_inc(sv_values, sv_value);
-      }
-    }
-  }
-  else if (self->is_integer() || self->is_logical()) {
-    for (IV i = 0; i < length; i++) {
-      if (self->exists_na_position(i)) {
-        my::avrv_push_inc(sv_values, &PL_sv_undef);
-      }
-      else {
-        IV value = self->get_integer_value(i);
-        SV* sv_value = my::new_mSViv(value);
-        my::avrv_push_inc(sv_values, sv_value);
-      }
-    }
+SV* value(...)
+  PPCODE:
+{
+  Rstats::Vector* self = my::to_c_obj<Rstats::Vector*>(ST(0));
+  
+  IV pos;
+  if (items < 2) {
+    pos = 0;
   }
   else {
-    sv_values = &PL_sv_undef;
+    pos = SvIV(ST(1));
   }
   
-  return_sv(sv_values);
+  SV* sv_value;
+  if (pos >= 0 && pos < self->get_length()) {
+    sv_value = self->get_value(pos);
+  }
+  else {
+    sv_value = &PL_sv_undef;
+  }
+  
+  return_sv(sv_value);
 }
 
 SV* is_character(...)
@@ -315,7 +241,8 @@ compose(...)
   
   Rstats::Vector* compose_elements;
   std::vector<IV> na_positions;
-  if (sv_cmp(sv_mode, my::new_mSVpv_nolen("character")) == 0) {
+  char* mode = SvPV_nolen(sv_mode);
+  if (strEQ(mode, "character")) {
     compose_elements = Rstats::Vector::new_character(len);
     for (IV i = 0; i < len; i++) {
       Rstats::Vector* element;
@@ -334,7 +261,7 @@ compose(...)
       }
     }
   }
-  else if (sv_cmp(sv_mode, my::new_mSVpv_nolen("complex")) == 0) {
+  else if (strEQ(mode, "complex")) {
     compose_elements = Rstats::Vector::new_complex(len);
     for (IV i = 0; i < len; i++) {
       Rstats::Vector* element;
@@ -353,7 +280,7 @@ compose(...)
       }
     }
   }
-  else if (sv_cmp(sv_mode, my::new_mSVpv_nolen("double")) == 0) {
+  else if (strEQ(mode, "double")) {
     compose_elements = Rstats::Vector::new_double(len);
     for (IV i = 0; i < len; i++) {
       Rstats::Vector* element;
@@ -372,9 +299,9 @@ compose(...)
       }
     }
   }
-  else if (sv_cmp(sv_mode, my::new_mSVpv_nolen("integer")) == 0) {
+  else if (strEQ(mode, "integer")) {
     compose_elements = Rstats::Vector::new_integer(len);
-    Rstats::Values::Integer* values = compose_elements->get_integer_values();
+    std::vector<IV>* values = compose_elements->get_integer_values();
     for (IV i = 0; i < len; i++) {
       Rstats::Vector* element;
       SV* sv_element = my::avrv_fetch_simple(sv_elements, i);
@@ -392,9 +319,9 @@ compose(...)
       }
     }
   }
-  else if (sv_cmp(sv_mode, my::new_mSVpv_nolen("logical")) == 0) {
+  else if (strEQ(mode, "logical")) {
     compose_elements = Rstats::Vector::new_logical(len);
-    Rstats::Values::Integer* values = compose_elements->get_integer_values();
+    std::vector<IV>* values = compose_elements->get_integer_values();
     for (IV i = 0; i < len; i++) {
       Rstats::Vector* element;
       SV* sv_element = my::avrv_fetch_simple(sv_elements, i);
@@ -513,12 +440,51 @@ is_finite(...)
 }
 
 SV*
+clone(...)
+  PPCODE:
+{
+  Rstats::Vector* self = my::to_c_obj<Rstats::Vector*>(ST(0));
+  
+  Rstats::Vector* e2 = Rstats::VectorFunc::clone(self);
+
+  SV* sv_e2 = my::to_perl_obj(e2, "Rstats::Vector");
+  
+  return_sv(sv_e2);
+}
+
+SV*
 is_infinite(...)
   PPCODE:
 {
   Rstats::Vector* self = my::to_c_obj<Rstats::Vector*>(ST(0));
   
   Rstats::Vector* rets = Rstats::VectorFunc::is_infinite(self);
+  
+  SV* sv_rets = my::to_perl_obj(rets, "Rstats::Vector");
+  
+  return_sv(sv_rets);
+}
+
+SV*
+is_positive_infinite(...)
+  PPCODE:
+{
+  Rstats::Vector* self = my::to_c_obj<Rstats::Vector*>(ST(0));
+  
+  Rstats::Vector* rets = Rstats::VectorFunc::is_positive_infinite(self);
+  
+  SV* sv_rets = my::to_perl_obj(rets, "Rstats::Vector");
+  
+  return_sv(sv_rets);
+}
+
+SV*
+is_negative_infinite(...)
+  PPCODE:
+{
+  Rstats::Vector* self = my::to_c_obj<Rstats::Vector*>(ST(0));
+  
+  Rstats::Vector* rets = Rstats::VectorFunc::is_negative_infinite(self);
   
   SV* sv_rets = my::to_perl_obj(rets, "Rstats::Vector");
   
@@ -606,6 +572,16 @@ DESTROY(...)
 }
 
 MODULE = Rstats::VectorFunc PACKAGE = Rstats::VectorFunc
+
+SV*
+negation(...)
+  PPCODE:
+{
+  Rstats::Vector* e1 = my::to_c_obj<Rstats::Vector*>(ST(0));
+  Rstats::Vector* e2 = Rstats::VectorFunc::negation(e1);
+  SV* sv_e2 = my::to_perl_obj(e2, "Rstats::Vector");
+  return_sv(sv_e2);
+}
 
 SV*
 remainder(...)
@@ -731,6 +707,16 @@ equal(...)
   Rstats::Vector* e3 = Rstats::VectorFunc::equal(e1, e2);
   SV* sv_e3 = my::to_perl_obj(e3, "Rstats::Vector");
   return_sv(sv_e3);
+}
+
+SV*
+sum(...)
+  PPCODE:
+{
+  Rstats::Vector* e1 = my::to_c_obj<Rstats::Vector*>(ST(0));
+  Rstats::Vector* e2 = Rstats::VectorFunc::sum(e1);
+  SV* sv_e2 = my::to_perl_obj(e2, "Rstats::Vector");
+  return_sv(sv_e2);
 }
 
 SV*
@@ -981,9 +967,18 @@ SV*
 new_character(...)
   PPCODE:
 {
-  SV* sv_str = ST(0);
-  Rstats::Vector* element = Rstats::Vector::new_character(1, sv_str);
+  Rstats::Vector* element = Rstats::Vector::new_character(items);
+  for (int i = 0; i < items; i++) {
+    SV* sv_value = ST(i);
+    if (SvOK(sv_value)) {
+      element->set_character_value(i, sv_value);
+    }
+    else {
+      element->add_na_position(i);
+    }
+  }
   SV* sv_element = my::to_perl_obj(element, "Rstats::Vector");
+
   return_sv(sv_element);
 }
 
@@ -991,11 +986,61 @@ SV*
 new_complex(...)
   PPCODE:
 {
-  SV* sv_re = ST(0);
-  SV* sv_im = ST(1);
-  NV re = SvNV(sv_re);
-  NV im = SvNV(sv_im);
-  Rstats::Vector* element = Rstats::Vector::new_complex(1, std::complex<NV>(re, im));
+  Rstats::Vector* element = Rstats::Vector::new_complex(items);
+  for (int i = 0; i < items; i++) {
+    SV* sv_value = ST(i);
+    
+    if (SvOK(sv_value)) {
+      SV* sv_value_re = my::hvrv_fetch_simple(sv_value, "re");
+      SV* sv_value_im = my::hvrv_fetch_simple(sv_value, "im");
+      
+      NV value_re;
+      if (SvOK(sv_value_re)) {
+        char* sv_value_re_str = SvPV_nolen(sv_value_re);
+        if (strEQ(sv_value_re_str, "NaN")) {
+          value_re =NAN;
+        }
+        else if (strEQ(sv_value_re_str, "Inf")) {
+          value_re = INFINITY;
+        }
+        else if (strEQ(sv_value_re_str, "-Inf")) {
+          value_re = -(INFINITY);
+        }
+        else {
+          value_re = SvNV(sv_value_re);
+        }
+      }
+      else {
+        value_re = 0;
+      }
+
+      NV value_im;
+      if (SvOK(sv_value_im)) {
+        char* sv_value_im_str = SvPV_nolen(sv_value_im);
+        if (strEQ(sv_value_im_str, "NaN")) {
+          value_im =NAN;
+        }
+        else if (strEQ(sv_value_im_str, "Inf")) {
+          value_im = INFINITY;
+        }
+        else if (strEQ(sv_value_im_str, "-Inf")) {
+          value_im = -(INFINITY);
+        }
+        else {
+          value_im = SvNV(sv_value_im);
+        }
+      }
+      else {
+        value_im = 0;
+      }
+      
+      element->set_complex_value(i, std::complex<NV>(value_re, value_im));
+    }
+    else {
+      element->add_na_position(i);
+    }
+  }
+
   SV* sv_element = my::to_perl_obj(element, "Rstats::Vector");
   return_sv(sv_element);
 }
@@ -1004,9 +1049,17 @@ SV*
 new_logical(...)
   PPCODE:
 {
-  SV* sv_value = ST(0);
-  IV iv = SvIV(sv_value);
-  Rstats::Vector* element = Rstats::Vector::new_logical(1, iv);
+  Rstats::Vector* element = Rstats::Vector::new_logical(items);
+  for (int i = 0; i < items; i++) {
+    SV* sv_value = ST(i);
+    if (SvOK(sv_value)) {
+      IV value = SvIV(sv_value);
+      element->set_integer_value(i, value ? 1 : 0);
+    }
+    else {
+      element->add_na_position(i);
+    }
+  }
   SV* sv_element = my::to_perl_obj(element, "Rstats::Vector");
   return_sv(sv_element);
 }
@@ -1033,9 +1086,29 @@ SV*
 new_double(...)
   PPCODE:
 {
-  SV* sv_value = ST(0);
-  NV value = SvNV(sv_value);
-  Rstats::Vector* element = Rstats::Vector::new_double(1, value);
+  Rstats::Vector* element = Rstats::Vector::new_double(items);
+  for (int i = 0; i < items; i++) {
+    SV* sv_value = ST(i);
+    if (SvOK(sv_value)) {
+      char* sv_value_str = SvPV_nolen(sv_value);
+      if (strEQ(sv_value_str, "NaN")) {
+        element->set_double_value(i, NAN);
+      }
+      else if (strEQ(sv_value_str, "Inf")) {
+        element->set_double_value(i, INFINITY);
+      }
+      else if (strEQ(sv_value_str, "-Inf")) {
+        element->set_double_value(i, -(INFINITY));
+      }
+      else {
+        NV value = SvNV(sv_value);
+        element->set_double_value(i, value);
+      }
+    }
+    else {
+      element->add_na_position(i);
+    }
+  }
   SV* sv_element = my::to_perl_obj(element, "Rstats::Vector");
   return_sv(sv_element);
 }
@@ -1044,9 +1117,17 @@ SV*
 new_integer(...)
   PPCODE:
 {
-  SV* sv_value = ST(0);
-  IV iv = SvIV(sv_value);
-  Rstats::Vector* element = Rstats::Vector::new_integer(1, iv);
+  Rstats::Vector* element = Rstats::Vector::new_integer(items);
+  for (int i = 0; i < items; i++) {
+    SV* sv_value = ST(i);
+    if (SvOK(sv_value)) {
+      IV value = SvIV(sv_value);
+      element->set_integer_value(i, value);
+    }
+    else {
+      element->add_na_position(i);
+    }
+  }
   SV* sv_element = my::to_perl_obj(element, "Rstats::Vector");
   return_sv(sv_element);
 }
